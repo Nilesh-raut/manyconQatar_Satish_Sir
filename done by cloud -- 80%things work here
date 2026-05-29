@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+<title>BOQ PDF</title>
+
+<script src="https://live.zwidgets.com/js-sdk/1.0.5/ZohoEmbededAppSDK.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+
+@page{
+    size:A4 portrait;
+    margin:10mm;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:0;
+    background:#e5e5e5;
+    font-family:"Times New Roman", serif;
+}
+
+#pdfArea{
+    width:190mm;
+    margin:auto;
+    background:#fff;
+    padding:10mm;
+    position:relative;
+}
+
+/* ================================= */
+/* WATERMARK */
+/* ================================= */
+
+.watermark{
+    position:absolute;
+    width:650px;
+    opacity:0.05;
+    top:200px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:0;
+}
+
+/* ================================= */
+
+.content{
+    position:relative;
+    z-index:5;
+}
+
+/* ================================= */
+/* TABLE */
+/* ================================= */
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    overflow:hidden;
+}
+
+tr,
+td,
+th{
+    page-break-inside:avoid !important;
+    break-inside:avoid !important;
+}
+
+th,
+td{
+    border:1px solid #2f2f2f;
+    padding:8px 6px;
+    font-size:13px;
+    vertical-align:middle;
+    overflow-wrap:anywhere;
+    word-wrap:break-word;
+    word-break:break-word;
+    white-space:normal;
+    max-width:0;
+}
+
+/* ================================= */
+
+.titleRow{
+    background:#b7c8e8;
+    font-size:18px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.projectRow{
+    background:#f2df98;
+    font-size:16px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.headerRow{
+    background:#efc5a7;
+    text-align:center;
+    font-weight:bold;
+}
+
+.culvertRow{
+    background:#d9d9d9;
+    text-align:center;
+    font-weight:bold;
+}
+
+.sectionRow{
+    background:#d9d9d9;
+    font-weight:bold;
+}
+
+.subSectionRow{
+    background:#efefef;
+    font-weight:bold;
+    font-style:italic;
+}
+
+.totalRow{
+    background:#97c93d;
+    font-weight:bold;
+}
+
+.subTotalRow{
+    background:#c6e0b4;
+    font-weight:bold;
+}
+
+.center{
+    text-align:center;
+}
+
+.right{
+    text-align:right;
+}
+
+.noteRow td{
+    color:red;
+    font-weight:bold;
+    text-align:left;
+    font-size:14px;
+    border:none;
+}
+
+.seal{
+    width:400px;
+    margin-top:20px;
+    margin-left:auto;
+    display:block;
+}
+
+thead{
+    display:table-header-group;
+}
+
+tfoot{
+    display:table-footer-group;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="pdfArea"></div>
+
+<script>
+
+/* ================================================= */
+/* SHARED ASSETS                                     */
+/* ================================================= */
+
+const watermarkImg = "";
+
+const sealImg = "data:image/png;base64,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";
+
+/* ================================================= */
+/* PDF GENERATORS - one function per BOQ type        */
+/* ================================================= */
+
+/* ---- 1. ROAD MARKING BOQ ---- */
+function buildRoadMarkingPDF(record) {
+
+    const items = record.Subform_1 || [];
+
+    const grouped = {};
+    items.forEach(item => {
+        const culvert = item.Select_Culvert || "OTHERS";
+        if (!grouped[culvert]) grouped[culvert] = [];
+        grouped[culvert].push(item);
+    });
+
+    let grandTotal = 0;
+    items.forEach(item => { grandTotal += Number(item.TOTAL_PRICE_QAR || 0); });
+
+    let rows = "";
+    Object.keys(grouped).forEach(culvert => {
+        rows += `<tr class="culvertRow"><td colspan="6">${culvert}</td></tr>`;
+        grouped[culvert].forEach(row => {
+            rows += `
+                <tr>
+                    <td class="center" style="width:5%;">${row.LinkingModule4_Serial_Number || ""}</td>
+                    <td style="width:53%;">${row.DESCRIPTION || ""}</td>
+                    <td class="center" style="width:10%;">${row.UOM || ""}</td>
+                    <td class="center" style="width:7%;">${row.QTY || ""}</td>
+                    <td class="right" style="width:12%;">${Number(row.UNIT_PRICE_QAR || 0).toFixed(2)}</td>
+                    <td class="right" style="width:13%;">${Number(row.TOTAL_PRICE_QAR || 0).toFixed(2)}</td>
+                </tr>`;
+        });
+    });
+
+    return {
+        title: `ROAD MARKING BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "ROAD MARKING BOQ.pdf",
+        html: `
+        <table>
+            <colgroup>
+                <col style="width:55px">
+                <col style="width:250px">
+                <col><col><col><col>
+            </colgroup>
+            <thead>
+                <tr><td colspan="6" class="titleRow">ROAD MARKING BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="6" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:5%;">Sl.NO.</th>
+                    <th style="width:53%;">DESCRIPTION</th>
+                    <th style="width:10%;">UOM</th>
+                    <th style="width:7%;">QTY</th>
+                    <th style="width:12%;">UNIT PRICE (QAR)</th>
+                    <th style="width:13%;">TOTAL PRICE (QAR)</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="5" class="right">TOTAL AMOUNT (QAR)</td>
+                    <td class="right">${grandTotal.toFixed(2)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="6">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+                <tr class="noteRow"><td colspan="6">NOTE : HEATING SYSTEM IS PROPANE NOT LPG</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 2. FIRE PROOFING BOQ ---- */
+function buildFireProofingPDF(record) {
+
+    const items = record.BOQ_Fire_Proofing || [];
+
+    /* Group by Main_Category (COLUMN / BEAM etc.) */
+    const grouped = {};
+    items.forEach(item => {
+        const cat = item.Main_Category || "OTHERS";
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+    });
+
+    /* Totals per category and grand */
+    let grandTotal = 0;
+    const catTotals = {};
+    items.forEach(item => {
+        const cat = item.Main_Category || "OTHERS";
+        const sqm = Number(item.Total_SQM || 0);
+        catTotals[cat] = (catTotals[cat] || 0) + sqm;
+        grandTotal += sqm;
+    });
+
+    let rows = "";
+    Object.keys(grouped).forEach(cat => {
+        rows += `<tr class="sectionRow"><td colspan="9">${cat}</td></tr>`;
+        grouped[cat].forEach(row => {
+            rows += `
+                <tr>
+                    <td class="center">${row.LinkingModule4_Serial_Number || ""}</td>
+                    <td>${row.FLOOR_NAME_STEEL_PROOFING_BOQ || ""}</td>
+                    <td class="center">${row.Size || ""}</td>
+                    <td class="center">${row.Exposure || ""}</td>
+                    <td class="center">${row.Length_Height_Per_Structure || ""}</td>
+                    <td class="center">${row.Nos || ""}</td>
+                    <td class="center">${row.Total_Length || ""}</td>
+                    <td class="center">${Number(row.SQM_Per_LM || 0).toFixed(2)}</td>
+                    <td class="right">${Number(row.Total_SQM || 0).toFixed(3)}</td>
+                </tr>`;
+        });
+        rows += `
+            <tr class="subTotalRow">
+                <td colspan="8" class="right">TOTAL SQM (${cat})</td>
+                <td class="right">${(catTotals[cat] || 0).toFixed(3)}</td>
+            </tr>`;
+    });
+
+    return {
+        title: `STEEL PROOFING BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "FIRE PROOFING BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="9" class="titleRow">STEEL PROOFING BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="9" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:6%;">SI.NO.</th>
+                    <th style="width:14%;">FLOOR NAME</th>
+                    <th style="width:18%;">SIZE</th>
+                    <th style="width:8%;">EXPOSURE</th>
+                    <th style="width:14%;">LENGTH / HEIGHT PER STRUCTURE</th>
+                    <th style="width:6%;">NOS</th>
+                    <th style="width:12%;">TOTAL LENGTH</th>
+                    <th style="width:10%;">SQM PER LM</th>
+                    <th style="width:12%;">TOTAL SQM</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="8" class="right">GRAND TOTAL SQM</td>
+                    <td class="right">${grandTotal.toFixed(3)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="9">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 3. GRP LINING BOQ ---- */
+function buildGRPLiningPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let grandTotal = 0;
+    items.forEach(item => { grandTotal += Number(item.TOTAL_PRICE_QAR || 0); });
+
+    let rows = "";
+    items.forEach(row => {
+        rows += `
+            <tr>
+                <td class="center" style="width:7%;">${row.LinkingModule5_Serial_Number || ""}</td>
+                <td style="width:53%;">${row.DESCRIPTION || ""}</td>
+                <td class="center" style="width:10%;">${row.UOM || ""}</td>
+                <td class="center" style="width:10%;">${row.QTY || ""}</td>
+                <td class="right" style="width:10%;">${Number(row.UNIT_PRICE_QAR || 0).toFixed(2)}</td>
+                <td class="right" style="width:10%;">${Number(row.TOTAL_PRICE_QAR || 0).toFixed(2)}</td>
+            </tr>`;
+    });
+
+    return {
+        title: `GRP BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "GRP LINING BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="6" class="titleRow">GRP BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="6" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:7%;">S.NO.</th>
+                    <th style="width:53%;">DESCRIPTION</th>
+                    <th style="width:10%;">UOM</th>
+                    <th style="width:10%;">QTY</th>
+                    <th style="width:10%;">UNIT PRICE (QAR)</th>
+                    <th style="width:10%;">TOTAL PRICE (QAR)</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="5" class="right">TOTAL AMOUNT (QAR)</td>
+                    <td class="right">${grandTotal.toFixed(2)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="6">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 4. HEAD OF WALL JOINT BOQ ---- */
+function buildHeadOfWallPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let totalOne = 0;
+    let totalDouble = 0;
+    items.forEach(item => {
+        totalOne    += Number(item.One_Side_Application    || 0);
+        totalDouble += Number(item.Double_Side_Application || 0);
+    });
+
+    let rows = "";
+    items.forEach(row => {
+        rows += `
+            <tr>
+                <td class="center" style="width:7%;">${row.LinkingModule5_Serial_Number || ""}</td>
+                <td style="width:22%;">${row.Location || ""}</td>
+                <td style="width:22%;">${row.Room_Name || ""}</td>
+                <td class="center" style="width:15%;">${row.Fire_Rating || ""}</td>
+                <td class="center" style="width:17%;">${Number(row.One_Side_Application || 0).toFixed(2)}</td>
+                <td class="center" style="width:17%;">${Number(row.Double_Side_Application || 0).toFixed(2)}</td>
+            </tr>`;
+    });
+
+    return {
+        title: `HEAD OF WALL JOINT - ${record.DRAIEH_CONTRACTING}`,
+        filename: "HEAD OF WALL JOINT BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="6" class="titleRow">HEAD OF WALL JOINT - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="6" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:7%;">S.NO.</th>
+                    <th style="width:22%;">LOCATION</th>
+                    <th style="width:22%;">ROOM NAME</th>
+                    <th style="width:15%;">FIRE RATING</th>
+                    <th style="width:17%;">ONE SIDE APPLICATION (LM)</th>
+                    <th style="width:17%;">DOUBLE SIDE APPLICATION (LM)</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="4" class="right">TOTAL :</td>
+                    <td class="center">${totalOne.toFixed(2)}</td>
+                    <td class="center">${totalDouble.toFixed(2)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="6">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 5. PENETRATION BOQ ---- */
+function buildPenetrationPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let rows = "";
+    items.forEach(row => {
+        rows += `
+            <tr>
+                <td class="center" style="width:6%;">${row.LinkingModule5_Serial_Number || ""}</td>
+                <td class="center" style="width:12%;">${row.Drawings || ""}</td>
+                <td style="width:14%;">${row.Floor_Name || ""}</td>
+                <td style="width:15%;">${row.Room_Name || ""}</td>
+                <td class="center" style="width:13%;">${row.Fire_Rating || ""}</td>
+                <td class="center" style="width:14%;">${row.Penetration || ""}</td>
+                <td class="center" style="width:14%;">${row.Size || ""}</td>
+                <td class="center" style="width:12%;">${row.QTY || ""}</td>
+            </tr>`;
+    });
+
+    return {
+        title: `PENETRATION BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "PENETRATION BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="8" class="titleRow">PENETRATION BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="8" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:6%;">SI.NO.</th>
+                    <th style="width:12%;">DRAWINGS</th>
+                    <th style="width:14%;">FLOOR NAME</th>
+                    <th style="width:15%;">ROOM NAME</th>
+                    <th style="width:13%;">FIRE RATING</th>
+                    <th style="width:14%;">PENETRATION</th>
+                    <th style="width:14%;">SIZE</th>
+                    <th style="width:12%;">QTY</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="noteRow"><td colspan="8">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 6. RM & EPOXY BOQ ---- */
+function buildRMEpoxyPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    /* Split into EPOXY section and ROAD MARKING section by Work_Type */
+    const epoxyItems  = items.filter(i => (i.Work_Type || "").toUpperCase().includes("EPOXY"));
+    const rmItems     = items.filter(i => (i.Work_Type || "").toUpperCase().includes("ROAD") || (i.Work_Type || "").toUpperCase().includes("MARKING"));
+    const otherItems  = items.filter(i => {
+        const wt = (i.Work_Type || "").toUpperCase();
+        return !wt.includes("EPOXY") && !wt.includes("ROAD") && !wt.includes("MARKING");
+    });
+
+    /* Combine: epoxy first, then road marking, then others */
+    const allSections = [];
+    if (epoxyItems.length)  allSections.push({ label: "EPOXY WORKS",        rows: epoxyItems });
+    if (rmItems.length)     allSections.push({ label: "ROAD MARKING WORKS", rows: rmItems    });
+    if (otherItems.length)  allSections.push({ label: "OTHERS",             rows: otherItems });
+    /* Fallback: if no Work_Type was set, just show all items flat */
+    if (!allSections.length) allSections.push({ label: "", rows: items });
+
+    let grandTotal = 0;
+    items.forEach(item => { grandTotal += Number(item.TOTAL_PRICE_QAR || 0); });
+
+    let rows = "";
+    allSections.forEach(sec => {
+        if (sec.label) {
+            rows += `<tr class="sectionRow"><td colspan="6">${sec.label}</td></tr>`;
+        }
+        /* Sub-group by Area_section within each section */
+        const areaGroups = {};
+        sec.rows.forEach(item => {
+            const area = item.Area_section || "";
+            if (!areaGroups[area]) areaGroups[area] = [];
+            areaGroups[area].push(item);
+        });
+
+        let secTotal = 0;
+        Object.keys(areaGroups).forEach(area => {
+            if (area) rows += `<tr class="subSectionRow"><td colspan="6">&nbsp;&nbsp;&nbsp;${area}</td></tr>`;
+            areaGroups[area].forEach(row => {
+                const tot = Number(row.TOTAL_PRICE_QAR || 0);
+                secTotal += tot;
+                rows += `
+                    <tr>
+                        <td class="center" style="width:6%;">${row.LinkingModule5_Serial_Number || ""}</td>
+                        <td style="width:48%;">${row.DESCRIPTION || ""}</td>
+                        <td class="center" style="width:8%;">${row.UOM || ""}</td>
+                        <td class="center" style="width:8%;">${row.QTY || ""}</td>
+                        <td class="right" style="width:15%;">${Number(row.UNIT_PRICE_QAR || 0).toFixed(2)}</td>
+                        <td class="right" style="width:15%;">${tot.toFixed(2)}</td>
+                    </tr>`;
+            });
+        });
+        if (sec.label) {
+            rows += `
+                <tr class="subTotalRow">
+                    <td colspan="5" class="right">TOTAL (${sec.label})</td>
+                    <td class="right">${secTotal.toFixed(2)}</td>
+                </tr>`;
+        }
+    });
+
+    return {
+        title: `RM & EPOXY BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "RM & EPOXY BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="6" class="titleRow">RM &amp; EPOXY BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="6" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:6%;">SI.NO.</th>
+                    <th style="width:48%;">DESCRIPTION</th>
+                    <th style="width:8%;">UOM</th>
+                    <th style="width:8%;">QTY</th>
+                    <th style="width:15%;">UNIT PRICE (QAR)</th>
+                    <th style="width:15%;">TOTAL PRICE (QAR)</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="5" class="right">TOTAL AMOUNT (QAR)</td>
+                    <td class="right">${grandTotal.toFixed(2)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="6">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ---- 7. SIGNAGE BOQ ---- */
+function buildSignagePDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let grandTotal = 0;
+    items.forEach(item => { grandTotal += Number(item.TOTAL_PRICE_QAR || 0); });
+
+    let rows = "";
+    items.forEach(row => {
+        rows += `
+            <tr>
+                <td class="center" style="width:6%;">${row.LinkingModule5_Serial_Number || ""}</td>
+                <td style="width:40%;">${row.DESCRIPTION || ""}</td>
+                <td class="center" style="width:14%;">${row.Drawings || ""}</td>
+                <td class="center" style="width:8%;">${row.UOM || ""}</td>
+                <td class="center" style="width:8%;">${row.QTY || ""}</td>
+                <td class="right" style="width:12%;">${Number(row.UNIT_PRICE_QAR || 0).toFixed(2)}</td>
+                <td class="right" style="width:12%;">${Number(row.TOTAL_PRICE_QAR || 0).toFixed(2)}</td>
+            </tr>`;
+    });
+
+    return {
+        title: `SIGNAGE BOQ - ${record.DRAIEH_CONTRACTING}`,
+        filename: "SIGNAGE BOQ.pdf",
+        html: `
+        <table>
+            <thead>
+                <tr><td colspan="7" class="titleRow">SIGNAGE BOQ - ${record.DRAIEH_CONTRACTING}</td></tr>
+                <tr><td colspan="7" class="projectRow">PROJECT: ${record.PROJECT}</td></tr>
+                <tr class="headerRow">
+                    <th style="width:6%;">SI.NO.</th>
+                    <th style="width:40%;">DESCRIPTION</th>
+                    <th style="width:14%;">REFERENCE</th>
+                    <th style="width:8%;">UOM</th>
+                    <th style="width:8%;">QTY</th>
+                    <th style="width:12%;">UNIT PRICE (QAR)</th>
+                    <th style="width:12%;">TOTAL PRICE (QAR)</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+                <tr class="totalRow">
+                    <td colspan="6" class="right">TOTAL AMOUNT (QAR)</td>
+                    <td class="right">${grandTotal.toFixed(2)}</td>
+                </tr>
+                <tr class="noteRow"><td colspan="7">NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION</td></tr>
+            </tfoot>
+        </table>`
+    };
+}
+
+/* ================================================= */
+/* ROUTER — picks the right builder by dropdown       */
+/* ================================================= */
+
+function getBuilder(selectValue) {
+    const v = (selectValue || "").trim().toUpperCase();
+
+    if (v.includes("ROAD MARKING"))           return buildRoadMarkingPDF;
+    if (v.includes("FIRE") ||
+        v.includes("PROOFING"))               return buildFireProofingPDF;
+    if (v.includes("GRP"))                    return buildGRPLiningPDF;
+    if (v.includes("HEAD OF WALL"))           return buildHeadOfWallPDF;
+    if (v.includes("PENETRATION"))            return buildPenetrationPDF;
+    if (v.includes("RM") ||
+        v.includes("EPOXY"))                  return buildRMEpoxyPDF;
+    if (v.includes("SIGNAGE") ||
+        v.includes("SIGNAGES"))               return buildSignagePDF;
+
+    /* default fallback */
+    return buildRoadMarkingPDF;
+}
+
+/* ================================================= */
+/* MAIN                                              */
+/* ================================================= */
+
+ZOHO.embeddedApp.on("PageLoad", async function(data) {
+
+try {
+
+    ZOHO.CRM.UI.Resize({ height: "900", width: "1200" });
+
+    /* ---- fetch record ---- */
+    const recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
+
+    const response = await ZOHO.CRM.API.getRecord({
+        Entity: "BOQ",
+        RecordID: recordId
+    });
+
+    const record = response.data[0];
+    console.log("Record:", record);
+
+    /* ---- pick builder from dropdown ---- */
+    const selectValue = record.Select_subfrom || "";
+    const builder     = getBuilder(selectValue);
+    const built       = builder(record);
+
+    /* ---- inject HTML ---- */
+    document.getElementById("pdfArea").innerHTML = `
+        <img class="watermark" src="${watermarkImg}">
+        <div class="content">
+            ${built.html}
+            <img class="seal" src="${sealImg}">
+        </div>`;
+
+    /* ---- generate PDF ---- */
+    setTimeout(() => {
+        html2pdf()
+            .set({
+                margin: [5, 5, 5, 5],
+                filename: built.filename,
+                image: { type: "jpeg", quality: 1 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    scrollY: 0
+                },
+                jsPDF: {
+                    unit: "mm",
+                    format: "a4",
+                    orientation: "portrait"
+                },
+                pagebreak: {
+                    mode: ["avoid-all", "css", "legacy"]
+                }
+            })
+            .from(document.getElementById("pdfArea"))
+            .save();
+    }, 1000);
+
+} catch (error) {
+    console.error(error);
+    alert("ERROR : " + JSON.stringify(error));
+}
+
+});
+
+ZOHO.embeddedApp.init();
+
+</script>
+
+</body>
+</html>
