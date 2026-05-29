@@ -1,0 +1,195 @@
+
+/** 
+ * log("sample logging statement") --> can be used to print any data in the browser console.
+ * ZDK module can be used for customising the UI and other functionalities.
+ * return false to prevent <SAVE> action
+**/
+
+
+// var value = ZDK.Page.getField("Select_subfrom").getValue();
+
+// log(value);
+
+
+
+
+
+
+// var selectedSubform = ZDK.Page.getField("Select_subfrom").getValue();
+// log(selectedSubform);
+
+
+// // SUBFORM FIELDS
+// var fireSubform = ZDK.Page.getField("BOQ_Fire_Proofing");
+// var allSubform = ZDK.Page.getField("all_Subform");
+
+
+
+
+
+
+
+var value = ZDK.Page.getField("Select_subfrom").getValue();
+
+// log(value);
+
+var sf = ZDK.Page.getSubform("all_Subform");
+if(value == "SIGNAGES BOQ FORMAT")
+    {
+        // SHOW
+    sf.getField("DESCRIPTION").setVisibility(true);
+    sf.getField("Reference").setVisibility(true);
+        sf.getField("UOM").setVisibility(true);
+        sf.getField("QTY").setVisibility(true);
+        sf.getField("UNIT_PRICE_QAR").setVisibility(true);
+        sf.getField("TOTAL_PRICE_QAR").setVisibility(true);
+
+    // HIDE
+    sf.getField("CULVERT").setVisibility(false);
+        sf.getField("Work_Type").setVisibility(false);
+        sf.getField("Area_section").setVisibility(false);
+        sf.getField("Drawings").setVisibility(false);
+        sf.getField("Floor_Name").setVisibility(false);
+        sf.getField("Room_Name").setVisibility(false);
+        sf.getField("Location").setVisibility(false);
+        sf.getField("Fire_Rating").setVisibility(false);
+        sf.getField("Penetration").setVisibility(false);
+        sf.getField("Size").setVisibility(false);
+        sf.getField("One_Side_Application").setVisibility(false);
+        sf.getField("Double_Side_Application").setVisibility(false);
+}
+else if(value == "ROAD MARKING - BOQ")
+{
+    // SHOW
+    sf.getField("DESCRIPTION").setVisibility(true);
+    sf.getField("UOM").setVisibility(true);
+    sf.getField("QTY").setVisibility(true);
+    sf.getField("UNIT_PRICE_QAR").setVisibility(true);
+    sf.getField("TOTAL_PRICE_QAR").setVisibility(true);
+
+    // HIDE
+        sf.getField("Reference").setVisibility(false);
+    sf.getField("CULVERT").setVisibility(false);
+    sf.getField("Work_Type").setVisibility(false);
+    sf.getField("Area_section").setVisibility(false);
+    sf.getField("Drawings").setVisibility(false);
+    sf.getField("Floor_Name").setVisibility(false);
+    sf.getField("Room_Name").setVisibility(false);
+    sf.getField("Location").setVisibility(false);
+    sf.getField("Fire_Rating").setVisibility(false);
+    sf.getField("Penetration").setVisibility(false);
+    sf.getField("Size").setVisibility(false);
+    sf.getField("One_Side_Application").setVisibility(false);
+    sf.getField("Double_Side_Application").setVisibility(false);
+}
+else if(value == "BOQ - RM & EPOXY")
+{
+    sf.getField("DESCRIPTION").setVisibility(true);
+    sf.getField("UOM").setVisibility(true);
+    sf.getField("QTY").setVisibility(true);
+    sf.getField("UNIT_PRICE_QAR").setVisibility(true);
+    sf.getField("TOTAL_PRICE_QAR").setVisibility(true);
+
+    sf.getField("Reference").setVisibility(false);
+    sf.getField("CULVERT").setVisibility(false);
+    sf.getField("Work_Type").setVisibility(false);
+    sf.getField("Area_section").setVisibility(false);
+    sf.getField("Drawings").setVisibility(false);
+    sf.getField("Floor_Name").setVisibility(false);
+    sf.getField("Room_Name").setVisibility(false);
+    sf.getField("Location").setVisibility(false);
+    sf.getField("Fire_Rating").setVisibility(false);
+    sf.getField("Penetration").setVisibility(false);
+    sf.getField("Size").setVisibility(false);
+    sf.getField("One_Side_Application").setVisibility(false);
+    sf.getField("Double_Side_Application").setVisibility(false);
+}
+else if(value == "BOQ - PENETRATION")
+{
+    sf.getField("Drawings").setVisibility(true);
+    sf.getField("Floor_Name").setVisibility(true);
+    sf.getField("Room_Name").setVisibility(true);
+    sf.getField("Fire_Rating").setVisibility(true);
+    sf.getField("Penetration").setVisibility(true);
+    sf.getField("Size").setVisibility(true);
+    sf.getField("QTY").setVisibility(true);
+
+    sf.getField("DESCRIPTION").setVisibility(false);
+    sf.getField("Reference").setVisibility(false);
+    sf.getField("UOM").setVisibility(false);
+    sf.getField("UNIT_PRICE_QAR").setVisibility(false);
+    sf.getField("TOTAL_PRICE_QAR").setVisibility(false);
+    sf.getField("CULVERT").setVisibility(false);
+    sf.getField("Work_Type").setVisibility(false);
+    sf.getField("Area_section").setVisibility(false);
+    sf.getField("Location").setVisibility(false);
+    sf.getField("One_Side_Application").setVisibility(false);
+    sf.getField("Double_Side_Application").setVisibility(false);
+}
+else if(value == "BOQ - HEAD OF WALL JOINT")
+{
+    sf.getField("Location").setVisibility(true);
+    sf.getField("Room_Name").setVisibility(true);
+    sf.getField("Fire_Rating").setVisibility(true);
+    sf.getField("One_Side_Application").setVisibility(true);
+    sf.getField("Double_Side_Application").setVisibility(true);
+
+    sf.getField("DESCRIPTION").setVisibility(false);
+    sf.getField("Reference").setVisibility(false);
+    sf.getField("UOM").setVisibility(false);
+    sf.getField("QTY").setVisibility(false);
+    sf.getField("UNIT_PRICE_QAR").setVisibility(false);
+    sf.getField("TOTAL_PRICE_QAR").setVisibility(false);
+    sf.getField("CULVERT").setVisibility(false);
+    sf.getField("Work_Type").setVisibility(false);
+    sf.getField("Area_section").setVisibility(false);
+    sf.getField("Drawings").setVisibility(false);
+    sf.getField("Floor_Name").setVisibility(false);
+    sf.getField("Penetration").setVisibility(false);
+    sf.getField("Size").setVisibility(false);
+}
+else if(value == "BOQ - GRP LINING")
+{
+    sf.getField("DESCRIPTION").setVisibility(true);
+    sf.getField("UOM").setVisibility(true);
+    sf.getField("QTY").setVisibility(true);
+    sf.getField("UNIT_PRICE_QAR").setVisibility(true);
+    sf.getField("TOTAL_PRICE_QAR").setVisibility(true);
+
+    sf.getField("Reference").setVisibility(false);
+    sf.getField("CULVERT").setVisibility(false);
+    sf.getField("Work_Type").setVisibility(false);
+    sf.getField("Area_section").setVisibility(false);
+    sf.getField("Drawings").setVisibility(false);
+    sf.getField("Floor_Name").setVisibility(false);
+    sf.getField("Room_Name").setVisibility(false);
+    sf.getField("Location").setVisibility(false);
+    sf.getField("Fire_Rating").setVisibility(false);
+    sf.getField("Penetration").setVisibility(false);
+    sf.getField("Size").setVisibility(false);
+    sf.getField("One_Side_Application").setVisibility(false);
+    sf.getField("Double_Side_Application").setVisibility(false);
+}
+else {
+            // SHOW
+        sf.getField("DESCRIPTION").setVisibility(false);
+        sf.getField("UOM").setVisibility(false);
+        sf.getField("QTY").setVisibility(false);
+        sf.getField("UNIT_PRICE_QAR").setVisibility(false);
+        sf.getField("TOTAL_PRICE_QAR").setVisibility(false);
+
+    // HIDE
+    sf.getField("CULVERT").setVisibility(false);
+        sf.getField("Work_Type").setVisibility(false);
+        sf.getField("Area_section").setVisibility(false);
+        sf.getField("Drawings").setVisibility(false);
+        sf.getField("Floor_Name").setVisibility(false);
+        sf.getField("Room_Name").setVisibility(false);
+        sf.getField("Location").setVisibility(false);
+        sf.getField("Fire_Rating").setVisibility(false);
+        sf.getField("Penetration").setVisibility(false);
+        sf.getField("Size").setVisibility(false);
+        sf.getField("One_Side_Application").setVisibility(false);
+        sf.getField("Double_Side_Application").setVisibility(false);
+}
+
