@@ -1,0 +1,497 @@
+<%{
+	is_driver = false;
+	if(input.search_type == "Employee Wise Search")
+	{
+		fet_Employee = Employee_Form[ID == input.employee_id];
+		if(fet_Employee.designation.designation_name == "Driver")
+		{
+			is_driver = true;
+			fet_timesheet = timesheets[Employee_Name == input.employee_id] sort by work_date;
+		}
+		else
+		{
+			fet_atten = Attendance_Form[Employee_Name == input.employee_id] sort by date_1;
+		}
+	}
+	else if(input.search_type == "Day Wise Search")
+	{
+		if(!isNull(input.employee_id))
+		{
+			fet_Employee = Employee_Form[ID == input.employee_id];
+			if(fet_Employee.designation.designation_name == "Driver")
+			{
+				is_driver = true;
+				fet_timesheet = timesheets[Employee_Name == input.employee_id && work_date == input.date_var] sort by work_date;
+			}
+			else
+			{
+				fet_timesheet = timesheets[work_date == input.date_var] sort by work_date;
+			}
+		}
+		else
+		{
+			fet_timesheet = timesheets[work_date == input.date_var] sort by work_date;
+		}
+	}
+	else if(input.search_type == "Week Wise Search")
+	{
+		week_from_date_format = input.week_from_date.toDate("dd-MMM-yyyy");
+		week_to_date_format = input.week_to_date.toDate("dd-MMM-yyyy");
+		if(!isNull(input.employee_id))
+		{
+			fet_Employee = Employee_Form[ID == input.employee_id];
+			if(fet_Employee.designation.designation_name == "Driver")
+			{
+				is_driver = true;
+				fet_timesheet = timesheets[Employee_Name == input.employee_id && work_date >= week_from_date_format && work_date <= week_to_date_format] sort by work_date;
+			}
+			else
+			{
+				fet_timesheet = timesheets[work_date >= week_from_date_format && work_date <= week_to_date_format] sort by work_date;
+			}
+		}
+		else
+		{
+			fet_timesheet = timesheets[work_date >= week_from_date_format && work_date <= week_to_date_format] sort by work_date;
+		}
+	}
+	else if(input.search_type == "Site Wise Search")
+	{
+		if(!isNull(input.employee_id))
+		{
+			fet_Employee = Employee_Form[ID == input.employee_id];
+		}
+		fet_timesheet = timesheets[Site_Name == input.site_id] sort by work_date;
+	}
+	else if(input.search_type == "Month Wise Search")
+	{
+		if(!isNull(input.employee_id))
+		{
+			fet_Employee = Employee_Form[ID == input.employee_id];
+			if(fet_Employee.designation.designation_name == "Driver")
+			{
+				is_driver = true;
+				fet_timesheet = timesheets[Employee_Name == input.employee_id && Month_field == input.month_val && Year_field == input.year_val] sort by work_date;
+			}
+			else
+			{
+				fet_timesheet = timesheets[Month_field == input.month_val && Year_field == input.year_val] sort by work_date;
+			}
+		}
+		else
+		{
+			fet_timesheet = timesheets[Month_field == input.month_val && Year_field == input.year_val] sort by work_date;
+		}
+	}
+	%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Timesheet</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body{
+      background:#f4f6f9;
+      padding:30px;
+    }
+
+    .container{
+      max-width:1200px;
+      margin:auto;
+      background:white;
+      padding:25px;
+      border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:25px;
+      flex-wrap:wrap;
+      gap:15px;
+    }
+
+    .header h1{
+      color:#1f2937;
+      font-size:32px;
+    }
+
+    .employee-info{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:15px;
+      margin-bottom:25px;
+    }
+
+    .card{
+      background:#f9fafb;
+      padding:15px;
+      border-radius:10px;
+      border-left:5px solid #2563eb;
+    }
+
+    .card h3{
+      font-size:14px;
+      color:#6b7280;
+      margin-bottom:5px;
+    }
+
+    .card p{
+      font-size:18px;
+      font-weight:bold;
+      color:#111827;
+    }
+
+    .table-container{
+      overflow-x:auto;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+    }
+
+    table thead{
+      background:#2563eb;
+      color:white;
+    }
+
+    table th,
+    table td{
+      padding:14px;
+      text-align:center;
+      border:1px solid #e5e7eb;
+    }
+
+    table tbody tr:nth-child(even){
+      background:#f9fafb;
+    }
+
+    table tbody tr:hover{
+      background:#e0f2fe;
+      transition:0.3s;
+    }
+
+    .status{
+      padding:6px 12px;
+      border-radius:20px;
+      font-size:13px;
+      font-weight:bold;
+      display:inline-block;
+    }
+
+    .completed{
+      background:#dcfce7;
+      color:#15803d;
+    }
+
+    .pending{
+      background:#fef3c7;
+      color:#b45309;
+    }
+
+    .footer{
+      margin-top:25px;
+      display:flex;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:15px;
+    }
+
+    .summary-box{
+      background:#eff6ff;
+      padding:15px 20px;
+      border-radius:10px;
+      min-width:220px;
+    }
+
+    .summary-box h3{
+      color:#1e40af;
+      margin-bottom:8px;
+    }
+
+    .summary-box p{
+      font-size:20px;
+      font-weight:bold;
+      color:#111827;
+    }
+
+    button{
+      background:#2563eb;
+      color:white;
+      border:none;
+      padding:12px 20px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:16px;
+      transition:0.3s;
+    }
+
+    button:hover{
+      background:#1d4ed8;
+    }
+
+    @media(max-width:768px){
+      .header{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+
+      table th,
+      table td{
+        padding:10px;
+        font-size:14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+	<h1><%=input.search_type%> Timesheet Report</h1>
+      <button>Download Report</button>
+    </div>
+<%
+	if(input.search_type == "Employee Wise Search" || !isNull(input.employee_id))
+	{
+		%>
+<div class="employee-info">
+
+      <div class="card">
+	 
+	  
+	  
+        <h3>Employee Name</h3>
+        <p><%=fet_Employee.Employee_Full_Name%></p>
+      </div>
+	  
+	 
+
+      <div class="card">
+        <h3>Employee ID</h3>
+        <p><%=fet_Employee.Employee_ID%></p>
+      </div>
+
+      <div class="card">
+        <h3>Designation</h3>
+        <p><%=fet_Employee.designation.designation_name%></p>
+      </div>
+
+     
+
+    </div>
+<%
+	}
+	if(fet_timesheet.count() > 0 || fet_atten.count() > 0)
+	{
+		%>
+<div class="table-container">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>Employee Name</th>
+			 <th>Work Date</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+            
+            <th>Total Hours</th>
+			<th>Normal Duty</th>
+			<th>Break Hours</th>
+            <th>Over Time</th>
+			
+          </tr>
+        </thead>
+
+        <tbody>
+<%
+		if(input.search_type != "Employee Wise Search")
+		{
+			for each  rec in fet_timesheet
+			{
+				if(rec.Timesheet_For == "Drivers")
+				{
+					if(!isNull(input.employee_id) && input.employee_id == rec.Employee_Name)
+					{
+						%>
+<tr>
+		
+            <td><%=rec.Employee_Name.Employee_Full_Name%></td>
+			  <td><%=rec.work_date%></td>
+            <td><%=rec.Check_In%></td>
+            <td><%=rec.Check_Out%></td>
+            <td><%=rec.Total_Hours_SL%></td>
+			<td><%=rec.Normal_Duty_SL%></td>
+           <td><%=rec.Break_Hours%></td>
+		    <td><%=rec.Over_Time_SL%></td>
+            </tr>
+<%
+					}
+					if(isNull(input.employee_id))
+					{
+						%>
+<tr>
+					<td><%=rec.Employee_Name.Employee_Full_Name%></td>
+					 <td><%=rec.work_date%></td>
+            <td><%=rec.Check_In%></td>
+            <td><%=rec.Check_Out%></td>
+            <td><%=rec.Total_Hours_SL%></td>
+			<td><%=rec.Normal_Duty_SL%></td>
+           <td><%=rec.Break_Hours%></td>
+		    <td><%=rec.Over_Time_SL%></td>
+					  </tr>
+<%
+					}
+					//If Employee ID is null closing
+				}
+				//If Time sheet is for Drivers Closing
+				else if(rec.Timesheet_For == "Site Workers")
+				{
+					for each  emp_row in rec.Work_Timings
+					{
+						for each  employee_name in emp_row.Employee
+						{
+							fet_Employee = Employee_Form[ID == employee_name];
+							if(!isNull(input.employee_id) && input.employee_id == employee_name.toNumber())
+							{
+								%>
+<tr>
+					<td><%=fet_Employee.Employee_Full_Name%></td>
+					 <td><%=rec.work_date%></td>
+            <td><%=emp_row.In_Time1%></td>
+            <td><%=emp_row.Out_Time%></td>
+            <td><%=emp_row.Total_Hours_SL%></td>
+			<td><%=emp_row.Normal_Duty_SL%></td>
+           <td><%=emp_row.Break_Hours_SL%></td>
+		    <td><%=emp_row.Over_Time_SL%></td>
+					  </tr>
+<%
+							}
+							//If Employee ID is not null closing
+							if(isNull(input.employee_id))
+							{
+								%>
+<tr>
+					<td><%=fet_Employee.Employee_Full_Name%></td>
+					 <td><%=rec.work_date%></td>
+            <td><%=emp_row.In_Time1%></td>
+            <td><%=emp_row.Out_Time%></td>
+            <td><%=emp_row.Total_Hours_SL%></td>
+			<td><%=emp_row.Normal_Duty_SL%></td>
+           <td><%=emp_row.Break_Hours_SL%></td>
+		    <td><%=emp_row.Over_Time_SL%></td>
+					  </tr>
+<%
+							}
+							//If Employee ID is null closing
+						}
+					}
+				}
+				//Timesheet for Site workers closing
+			}
+			//For each timesheet closing
+		}
+		//Search Type not equal to Employee wise if closing
+		else if(input.search_type == "Employee Wise Search")
+		{
+			if(is_driver == true)
+			{
+				for each  rec in fet_timesheet
+				{
+					if(rec.Timesheet_For == "Drivers")
+					{
+						%>
+<tr>
+		
+            <td><%=rec.Employee_Name.Employee_Full_Name%></td>
+			  <td><%=rec.work_date%></td>
+            <td><%=rec.Check_In%></td>
+            <td><%=rec.Check_Out%></td>
+            <td><%=rec.Total_Hours_SL%></td>
+			<td><%=rec.Normal_Duty_SL%></td>
+           <td><%=rec.Break_Hours%></td>
+		    <td><%=rec.Over_Time_SL%></td>
+            </tr>
+<%
+					}
+				}
+			}
+			//If is driver == true closing
+			else
+			{
+				for each  emp_wise_rec in fet_atten
+				{
+					fet_timesheet_emp = timesheets[work_date == emp_wise_rec.date_1];
+					for each  timesheet_rec in fet_timesheet_emp
+					{
+						for each  emp_row in timesheet_rec.Work_Timings
+						{
+							for each  employee_name in emp_row.Employee
+							{
+								if(input.employee_id.toLong() == employee_name.toLong())
+								{
+									has_record = true;
+									%>
+<tr>
+
+					<td><%=fet_Employee.Employee_Full_Name%></td>
+				
+					
+					 <td><%=fet_timesheet_emp.work_date%></td>
+            <td><%=emp_row.In_Time1%></td>
+            <td><%=emp_row.Out_Time%></td>
+            <td><%=emp_row.Total_Hours_SL%></td>
+			<td><%=emp_row.Normal_Duty_SL%></td>
+           <td><%=emp_row.Break_Hours_SL%></td>
+		    <td><%=emp_row.Over_Time_SL%></td>
+					  </tr>
+<%
+								}
+							}
+						}
+					}
+				}
+			}
+			// Else if driver == false
+		}
+		//Else if Employee wise search closing
+		%>
+</tbody>
+</table>
+
+    </div>
+<%
+	}
+	//Timesheet count > 0 if closing
+	else if(fet_timesheet.count() == 0 && !isNull(input.search_type))
+	{
+		%>
+<h1 style="color: #ff5722; font-size: 32px; font-weight: bold;align:center;">
+ NO RECORDS FOUND
+</h1>
+<%
+	}
+	%>
+</div>
+
+</body>
+</html>
+<%
+
+}%>
