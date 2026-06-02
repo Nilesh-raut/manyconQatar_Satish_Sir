@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://static.zohocdn.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{background:#f4f6f9;padding:30px;}
+.container{max-width:1200px;margin:auto;background:white;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:15px;}
+.header h1{color:#1f2937;font-size:28px;}
+.header-btns{display:flex;gap:10px;}
+.employee-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:25px;}
+.card{background:#f9fafb;padding:15px;border-radius:10px;border-left:5px solid #2563eb;}
+.card h3{font-size:14px;color:#6b7280;margin-bottom:5px;}
+.card p{font-size:18px;font-weight:bold;color:#111827;}
+.table-container{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+table thead{background:#2563eb;color:white;}
+table th,table td{padding:14px;text-align:center;border:1px solid #e5e7eb;font-size:13px;}
+table tbody tr:nth-child(even){background:#f9fafb;}
+table tbody tr:hover{background:#e0f2fe;transition:0.3s;}
+.no-records{color:#ff5722;font-size:24px;font-weight:bold;text-align:center;padding:30px;}
+.loading{text-align:center;padding:40px;font-size:18px;color:#2563eb;}
+.btn{color:white;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:15px;transition:0.3s;display:inline-flex;align-items:center;gap:8px;}
+.btn-blue{background:#2563eb;}
+.btn-blue:hover{background:#1d4ed8;}
+.btn-green{background:#16a34a;}
+.btn-green:hover{background:#15803d;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+@media(max-width:768px){
+  .header{flex-direction:column;align-items:flex-start;}
+  table th,table td{padding:8px;font-size:12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="mainContainer">
+  <div class="loading" id="loadingDiv">Loading Timesheet Report...</div>
+</div>
+
+<script>
+
+var _rows = [];
+var _reportTitle = "";
+
+function parseDate(str){
+  if(!str) return null;
+  const parts = str.split("-");
+  if(parts.length !== 3) return null;
+  return new Date(parts[1]+" "+parts[0]+", "+parts[2]);
+}
+
+function parseWorkTiming(dv){
+  const parts = dv.split("^#^").map(s => s.trim());
+  return {
+    id:         parts[0] || "",
+    employees:  parts[1] || "",
+    inTime:     parts[2] || "",
+    outTime:    parts[3] || "",
+    totalHours: parts[4] || "",
+    normalDuty: parts[5] || "",
+    breakHours: parts[6] || "",
+    overTime:   parts[7] || ""
+  };
+}
+
+function extractEmployeeNames(empStr){
+  if(!empStr) return [];
+  return empStr.split(",").map(s => {
+    const parts = s.trim().split(" - ");
+    return parts.length >= 2 ? parts.slice(1).join(" - ").trim() : s.trim();
+  });
+}
+
+function extractEmployeeIDs(empStr){
+  if(!empStr) return [];
+  return empStr.split(",").map(s => {
+    const parts = s.trim().split(" - ");
+    return parts[0] ? parts[0].trim() : "";
+  });
+}
+
+async function getAllRecords(reportName){
+  let all = [];
+  let page = 1;
+  let hasMore = true;
+  while(hasMore){
+    const res = await ZOHO.CREATOR.API.getAllRecords({
+      appName:"employee-self-service-portal",
+      reportName:reportName,
+      page:page,
+      pageSize:200
+    });
+    const records = res.data || [];
+    all.push(...records);
+    if(records.length < 200) hasMore = false;
+    else page++;
+  }
+  return all;
+}
+
+function buildRowsFromDriverRecord(rec){
+  return [{
+    employeeName: rec.Employee_Name ? (rec.Employee_Name.display_value || "") : "",
+    workDate:     rec.work_date || "",
+    checkIn:      rec.Check_In  || "",
+    checkOut:     rec.Check_Out || "",
+    totalHours:   rec.Total_Hours_SL || "",
+    normalDuty:   "08:00",
+    breakHours:   "01:00",
+    overTime:     rec.Over_Time_SL || ""
+  }];
+}
+
+function buildRowsFromSiteWorkerRecord(rec){
+  const rows = [];
+  const wts = rec.Work_Timings || [];
+  for(const wt of wts){
+    const dv = wt.display_value || "";
+    if(!dv) continue;
+    const parsed   = parseWorkTiming(dv);
+    const empNames = extractEmployeeNames(parsed.employees);
+    for(let i = 0; i < empNames.length; i++){
+      rows.push({
+        employeeName: empNames[i] || parsed.employees,
+        workDate:     rec.work_date || "",
+        checkIn:      parsed.inTime,
+        checkOut:     parsed.outTime,
+        totalHours:   parsed.totalHours,
+        normalDuty:   parsed.normalDuty,
+        breakHours:   parsed.breakHours,
+        overTime:     parsed.overTime
+      });
+    }
+  }
+  return rows;
+}
+
+function downloadExcel(){
+  if(!_rows || _rows.length === 0){
+    alert("No data to export.");
+    return;
+  }
+
+  const btn = document.getElementById("excelBtn");
+  btn.disabled = true;
+  btn.textContent = "Exporting...";
+
+  try{
+    const wb = XLSX.utils.book_new();
+
+    // Header row + data rows only — nothing else
+    const sheetData = [];
+
+    sheetData.push([
+      "Employee Name",
+      "Work Date",
+      "Check In",
+      "Check Out",
+      "Total Hours",
+      "Normal Duty",
+      "Break Hours",
+      "Over Time"
+    ]);
+
+    for(const r of _rows){
+      sheetData.push([
+        r.employeeName,
+        r.workDate,
+        r.checkIn,
+        r.checkOut,
+        r.totalHours,
+        r.normalDuty,
+        r.breakHours,
+        r.overTime
+      ]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    ws["!cols"] = [
+      {wch:32},
+      {wch:15},
+      {wch:15},
+      {wch:15},
+      {wch:14},
+      {wch:14},
+      {wch:14},
+      {wch:12}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
+
+    const safeTitle = (_reportTitle || "Timesheet_Report").replace(/[^a-z0-9]/gi,"_");
+    XLSX.writeFile(wb, safeTitle + ".xlsx");
+
+  } catch(err){
+    console.error(err);
+    alert("Export failed: " + err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Download Excel";
+}
+
+function renderReport(title, employeeInfo, rows){
+  _rows = rows;
+  _reportTitle = title;
+
+  const container = document.getElementById("mainContainer");
+
+  let empInfoHTML = "";
+  if(employeeInfo){
+    empInfoHTML = `
+      <div class="employee-info">
+        <div class="card"><h3>Employee Name</h3><p>${employeeInfo.name}</p></div>
+        <div class="card"><h3>Employee ID</h3><p>${employeeInfo.empId}</p></div>
+        <div class="card"><h3>Designation</h3><p>${employeeInfo.designation}</p></div>
+      </div>`;
+  }
+
+  let tableHTML = "";
+  if(rows.length === 0){
+    tableHTML = `<div class="no-records">NO RECORDS FOUND</div>`;
+  } else {
+    const rowsHTML = rows.map(r => `
+      <tr>
+        <td>${r.employeeName}</td>
+        <td>${r.workDate}</td>
+        <td>${r.checkIn}</td>
+        <td>${r.checkOut}</td>
+        <td>${r.totalHours}</td>
+        <td>${r.normalDuty}</td>
+        <td>${r.breakHours}</td>
+        <td>${r.overTime}</td>
+      </tr>`).join("");
+
+    tableHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee Name</th>
+              <th>Work Date</th>
+              <th>Check In</th>
+              <th>Check Out</th>
+              <th>Total Hours</th>
+              <th>Normal Duty</th>
+              <th>Break Hours</th>
+              <th>Over Time</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHTML}</tbody>
+        </table>
+      </div>`;
+  }
+
+  const excelBtnHTML = rows.length > 0
+    ? `<button class="btn btn-green" id="excelBtn" onclick="downloadExcel()">Download Excel</button>`
+    : "";
+
+  container.innerHTML = `
+    <div class="header">
+      <h1>${title}</h1>
+      <div class="header-btns">
+        ${excelBtnHTML}
+        <button class="btn btn-blue" onclick="window.print()">Print Report</button>
+      </div>
+    </div>
+    ${empInfoHTML}
+    ${tableHTML}`;
+}
+
+ZOHO.CREATOR.init().then(async function(){
+  try{
+    const params     = ZOHO.CREATOR.UTIL.getQueryParams();
+    const searchType = params.search_type    || "";
+    const employeeId = params.employee_id    || "";
+    const dateVar    = params.date_var       || "";
+    const weekFrom   = params.week_from_date || "";
+    const weekTo     = params.week_to_date   || "";
+    const monthVal   = params.month_val      || "";
+    const yearVal    = params.year_val       || "";
+    const siteId     = params.site_id        || "";
+
+    const title = (searchType || "Month Wise Search") + " Timesheet Report";
+
+    const allTimesheets = await getAllRecords("All_Timesheets");
+
+    let employeeInfo = null;
+    let employeeCode = "";
+    let isDriver     = false;
+
+    if(employeeId){
+      const allEmployees = await getAllRecords("Employee_Master_Report");
+      const emp = allEmployees.find(e => String(e.ID) === String(employeeId));
+      if(emp){
+        const desig  = emp.designation ? (emp.designation.display_value || "") : "";
+        isDriver     = desig === "Driver";
+        employeeCode = emp.Employee_ID || "";
+        employeeInfo = {
+          name:        emp.Employee_Full_Name || "",
+          empId:       emp.Employee_ID || "",
+          designation: desig
+        };
+      }
+    }
+
+    let filtered = [];
+
+    if(searchType === "Employee Wise Search" && employeeId){
+      if(isDriver){
+        filtered = allTimesheets.filter(rec =>
+          rec.Timesheet_For === "Drivers" &&
+          rec.Employee_Name &&
+          String(rec.Employee_Name.ID) === String(employeeId)
+        );
+      } else {
+        filtered = allTimesheets.filter(rec => {
+          if(rec.Timesheet_For !== "Site Workers") return false;
+          return (rec.Work_Timings || []).some(wt => {
+            const parsed = parseWorkTiming(wt.display_value || "");
+            return extractEmployeeIDs(parsed.employees).some(id => id.trim() === employeeCode.trim());
+          });
+        });
+      }
+    }
+    else if(searchType === "Day Wise Search"){
+      if(employeeId && isDriver){
+        filtered = allTimesheets.filter(rec =>
+          rec.Timesheet_For === "Drivers" &&
+          rec.Employee_Name &&
+          String(rec.Employee_Name.ID) === String(employeeId) &&
+          rec.work_date === dateVar
+        );
+      } else {
+        filtered = allTimesheets.filter(rec => rec.work_date === dateVar);
+      }
+    }
+    else if(searchType === "Week Wise Search"){
+      const fromDate = parseDate(weekFrom);
+      const toDate   = parseDate(weekTo);
+      if(employeeId && isDriver){
+        filtered = allTimesheets.filter(rec => {
+          if(rec.Timesheet_For !== "Drivers") return false;
+          if(!rec.Employee_Name || String(rec.Employee_Name.ID) !== String(employeeId)) return false;
+          const d = parseDate(rec.work_date);
+          return d && fromDate && toDate && d >= fromDate && d <= toDate;
+        });
+      } else {
+        filtered = allTimesheets.filter(rec => {
+          const d = parseDate(rec.work_date);
+          return d && fromDate && toDate && d >= fromDate && d <= toDate;
+        });
+      }
+    }
+    else if(searchType === "Site Wise Search"){
+      filtered = allTimesheets.filter(rec =>
+        rec.Site_Name &&
+        String(rec.Site_Name.ID) === String(siteId)
+      );
+    }
+    else {
+      if(employeeId && isDriver){
+        filtered = allTimesheets.filter(rec =>
+          rec.Timesheet_For === "Drivers" &&
+          rec.Employee_Name &&
+          String(rec.Employee_Name.ID) === String(employeeId) &&
+          rec.Month_field === monthVal &&
+          rec.Year_field  === yearVal
+        );
+      } else {
+        filtered = allTimesheets.filter(rec =>
+          rec.Month_field === monthVal &&
+          rec.Year_field  === yearVal
+        );
+      }
+    }
+
+    let rows = [];
+
+    for(const rec of filtered){
+      if(rec.Timesheet_For === "Drivers"){
+        if(!employeeId || (rec.Employee_Name && String(rec.Employee_Name.ID) === String(employeeId))){
+          rows.push(...buildRowsFromDriverRecord(rec));
+        }
+      } else {
+        if(employeeId && !isDriver){
+          const wts = rec.Work_Timings || [];
+          for(const wt of wts){
+            const dv = wt.display_value || "";
+            if(!dv) continue;
+            const parsed   = parseWorkTiming(dv);
+            const empIds   = extractEmployeeIDs(parsed.employees);
+            const empNames = extractEmployeeNames(parsed.employees);
+            for(let i = 0; i < empIds.length; i++){
+              if(empIds[i].trim() === employeeCode.trim()){
+                rows.push({
+                  employeeName: empNames[i] || parsed.employees,
+                  workDate:     rec.work_date || "",
+                  checkIn:      parsed.inTime,
+                  checkOut:     parsed.outTime,
+                  totalHours:   parsed.totalHours,
+                  normalDuty:   parsed.normalDuty,
+                  breakHours:   parsed.breakHours,
+                  overTime:     parsed.overTime
+                });
+              }
+            }
+          }
+        } else {
+          rows.push(...buildRowsFromSiteWorkerRecord(rec));
+        }
+      }
+    }
+
+    rows.sort((a,b) => {
+      const da = parseDate(a.workDate);
+      const db = parseDate(b.workDate);
+      if(!da||!db) return 0;
+      return da - db;
+    });
+
+    renderReport(title, employeeInfo, rows);
+
+  } catch(err){
+    console.error(err);
+    document.getElementById("mainContainer").innerHTML =
+      `<div class="no-records">Error loading report: ${err}</div>`;
+  }
+});
+</script>
+</body>
+</html>
