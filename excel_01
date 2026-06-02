@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+
+<script src="https://static.zohocdn.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 0 10px rgba(0,0,0,.1);
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.header h2{
+    color:#1f2937;
+}
+
+button{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+.employee-info{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#f9fafb;
+    padding:15px;
+    border-radius:10px;
+    border-left:5px solid #2563eb;
+}
+
+.card h3{
+    font-size:14px;
+    color:#6b7280;
+}
+
+.card p{
+    font-size:18px;
+    font-weight:bold;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+thead{
+    background:#2563eb;
+    color:white;
+}
+
+th,td{
+    padding:12px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+
+tbody tr:nth-child(even){
+    background:#f8f8f8;
+}
+
+.no-record{
+    text-align:center;
+    color:#ff5722;
+    font-size:28px;
+    margin-top:30px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<h2 id="reportTitle">
+Timesheet Report
+</h2>
+
+<button onclick="downloadExcel()">
+Download Report
+</button>
+
+</div>
+
+<div id="employeeInfo"></div>
+
+<table id="timesheetTable">
+
+<thead>
+<tr>
+<th>Employee Name</th>
+<th>Work Date</th>
+<th>Check In</th>
+<th>Check Out</th>
+<th>Total Hours</th>
+<th>Normal Duty</th>
+<th>Break Hours</th>
+<th>Over Time</th>
+</tr>
+</thead>
+
+<tbody id="tableBody">
+
+</tbody>
+
+</table>
+
+<div id="message"></div>
+
+</div>
+
+<script>
+
+let allRecords = [];
+
+function filterData(records, params) {
+
+    const searchType = params.search_type || "";
+    const monthVal = params.month_val || "";
+    const yearVal = params.year_val || "";
+    const siteId = params.site_id || "";
+    const dateVar = params.date_var || "";
+
+    const monthMap = {
+        January:"Jan",
+        February:"Feb",
+        March:"Mar",
+        April:"Apr",
+        May:"May",
+        June:"Jun",
+        July:"Jul",
+        August:"Aug",
+        September:"Sep",
+        October:"Oct",
+        November:"Nov",
+        December:"Dec"
+    };
+
+    if(searchType === "Month Wise Search") {
+
+        const targetMonth =
+        monthMap[monthVal] || monthVal;
+
+        return records.filter(rec => {
+
+            if(!rec.work_date) return false;
+
+            const parts =
+            rec.work_date.split("-");
+
+            if(parts.length !== 3)
+                return false;
+
+            const month = parts[1];
+            const year = parts[2];
+
+            return (
+                month === targetMonth &&
+                year == yearVal
+            );
+
+        });
+
+    }
+
+    if(searchType === "Day Wise Search") {
+
+        return records.filter(rec =>
+            rec.work_date === dateVar
+        );
+
+    }
+
+    if(searchType === "Site Wise Search") {
+
+        return records.filter(rec =>
+            rec.Site_Name &&
+            rec.Site_Name.ID == siteId
+        );
+
+    }
+
+    return records;
+}
+
+ZOHO.CREATOR.init().then(async function(){
+
+    try{
+
+        let params =
+        ZOHO.CREATOR.UTIL.getQueryParams();
+
+        console.log("PARAMS", params);
+
+        let searchType =
+        params.search_type || "Timesheet";
+
+        document.getElementById("reportTitle")
+        .innerHTML =
+        searchType + " Timesheet Report";
+
+        let response =
+        await ZOHO.CREATOR.API.getAllRecords({
+
+            appName:"employee-self-service-portal",
+            reportName:"All_Timesheets"
+
+        });
+
+        //console.log("RESPONSE", response);
+        console.log(JSON.stringify(response.data.slice(0,5), null, 2));
+
+       document.body.innerHTML += `
+        <pre style="
+        background:white;
+        border:2px solid red;
+        padding:20px;
+        max-height:800px;
+        overflow:auto;
+        font-size:12px;
+        white-space:pre-wrap;
+        word-break:break-word;
+        ">
+        ${JSON.stringify(response.data.slice(0,5), null, 2)}
+        </pre>
+        `;
+
+
+
+
+
+        allRecords =
+        response.data || [];
+
+        let filteredData =
+        filterData(
+            allRecords,
+            params
+        );
+
+        console.log(
+            "FILTERED",
+            filteredData.length
+        );
+
+        renderTable(filteredData);
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        document.getElementById("message")
+        .innerHTML =
+        `
+        <div class='no-record'>
+            Error Loading Records
+            <br><br>
+            ${error}
+        </div>
+        `;
+
+    }
+
+});
+
+
+
+
+function renderTable(records){
+
+    let tbody =
+    document.getElementById("tableBody");
+
+    let html = "";
+
+    records.forEach(function(rec){
+
+        // =========================
+        // DRIVERS
+        // =========================
+
+        if(rec.Timesheet_For === "Drivers"){
+
+            html += `
+            <tr>
+
+                <td>
+                    ${rec.Employee_Name?.display_value || rec.Employee_Name || ""}
+                </td>
+
+                <td>
+                    ${rec.work_date || ""}
+                </td>
+
+                <td>
+                    ${rec.Check_In || ""}
+                </td>
+
+                <td>
+                    ${rec.Check_Out || ""}
+                </td>
+
+                <td>
+                    ${rec.Total_Hours_SL || ""}
+                </td>
+
+                <td>
+                    ${rec.Normal_Duty_SL || ""}
+                </td>
+
+                <td>
+                    ${rec.Break_Hours || ""}
+                </td>
+
+                <td>
+                    ${rec.Over_Time_SL || ""}
+                </td>
+
+            </tr>
+            `;
+        }
+
+        // =========================
+        // SITE WORKERS
+        // =========================
+
+        else if(
+            rec.Timesheet_For === "Site Workers" &&
+            rec.Work_Timings &&
+            rec.Work_Timings.length > 0
+        ){
+
+            rec.Work_Timings.forEach(function(sub){
+
+                let values =
+                (sub.display_value || "")
+                .split("^#^");
+
+                let employeeName =
+                values[0] || "";
+
+                let inTime =
+                values[1] || "";
+
+                let outTime =
+                values[2] || "";
+
+                let totalHours =
+                values[3] || "";
+
+                let normalDuty =
+                values[4] || "";
+
+                let breakHours =
+                values[5] || "";
+
+                let overTime =
+                values[6] || "";
+
+                html += `
+                <tr>
+
+                    <td>
+                        ${employeeName}
+                    </td>
+
+                    <td>
+                        ${rec.work_date || ""}
+                    </td>
+
+                    <td>
+                        ${inTime}
+                    </td>
+
+                    <td>
+                        ${outTime}
+                    </td>
+
+                    <td>
+                        ${totalHours}
+                    </td>
+
+                    <td>
+                        ${normalDuty}
+                    </td>
+
+                    <td>
+                        ${breakHours}
+                    </td>
+
+                    <td>
+                        ${overTime}
+                    </td>
+
+                </tr>
+                `;
+            });
+
+        }
+
+    });
+
+    tbody.innerHTML = html;
+
+    if(html === ""){
+
+        document.getElementById("message")
+        .innerHTML =
+        `
+        <div class='no-record'>
+            NO RECORDS FOUND
+        </div>
+        `;
+    }
+    else{
+
+        document.getElementById("message")
+        .innerHTML = "";
+
+    }
+
+}
+
+
+
+function downloadExcel(){
+
+    let table =
+    document.getElementById(
+    "timesheetTable"
+    );
+
+    let workbook =
+    XLSX.utils.table_to_book(
+        table
+    );
+
+    XLSX.writeFile(
+        workbook,
+        "Timesheet_Report.xlsx"
+    );
+
+}
+
+</script>
+
+</body>
+</html>
+
