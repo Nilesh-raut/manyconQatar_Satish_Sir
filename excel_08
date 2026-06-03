@@ -1,0 +1,520 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://static.zohocdn.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+      body {
+        background: #f4f6f9;
+        padding: 15px;
+      }
+      .action-strip {
+        width: 100%;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      .loading {
+        font-size: 15px;
+        color: #2563eb;
+        font-weight: bold;
+        margin-left: auto;
+      }
+      .no-records {
+        color: #ff5722;
+        font-size: 15px;
+        font-weight: bold;
+        margin-left: auto;
+      }
+      .btn-green {
+        background: #16a34a;
+        color: white;
+        border: none;
+        padding: 10px 22px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        transition: 0.3s;
+        margin-left: auto;
+      }
+      .btn-green:hover {
+        background: #15803d;
+      }
+      .btn-green:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="action-strip" id="mainContainer">
+      <div class="loading">Processing Timesheet Data...</div>
+    </div>
+
+    <script>
+      var _rows = [];
+      var _reportTitle = "";
+
+      /* ── helpers ── */
+
+      function parseDate(str) {
+        if (!str) return null;
+        var parts = str.split("-");
+        if (parts.length !== 3) return null;
+        return new Date(parts[1] + " " + parts[0] + ", " + parts[2]);
+      }
+
+      function parseWorkTiming(dv) {
+        var parts = dv.split("^#^").map(function (s) {
+          return s.trim();
+        });
+        return {
+          employees: parts[1] || "",
+          inTime: parts[2] || "",
+          outTime: parts[3] || "",
+          totalHours: parts[4] || "",
+          normalDuty: parts[5] || "",
+          breakHours: parts[6] || "",
+          overTime: parts[7] || "",
+        };
+      }
+
+      function extractEmployeeNames(empStr) {
+        if (!empStr) return [];
+        return empStr.split(",").map(function (s) {
+          var parts = s.trim().split(" - ");
+          return parts.length >= 2
+            ? parts.slice(1).join(" - ").trim()
+            : s.trim();
+        });
+      }
+
+      function extractEmployeeIDs(empStr) {
+        if (!empStr) return [];
+        return empStr.split(",").map(function (s) {
+          var parts = s.trim().split(" - ");
+          return parts[0] ? parts[0].trim() : "";
+        });
+      }
+
+      /* ── paged fetch ── */
+
+      async function getAllRecords(reportName) {
+        var all = [];
+        var page = 1;
+        var hasMore = true;
+        while (hasMore) {
+          var res = await ZOHO.CREATOR.API.getAllRecords({
+            appName: "employee-self-service-portal",
+            reportName: reportName,
+            page: page,
+            pageSize: 200,
+          });
+          var records = res.data || [];
+          all.push.apply(all, records);
+          if (records.length < 200) hasMore = false;
+          else page++;
+        }
+        return all;
+      }
+
+      /* ── row builders ── */
+
+      function buildDriverRow(rec) {
+        return {
+          employeeName: rec.Employee_Name
+            ? rec.Employee_Name.display_value || ""
+            : "",
+          workDate: rec.work_date || "",
+          checkIn: rec.Check_In || "",
+          checkOut: rec.Check_Out || "",
+          totalHours: rec.Total_Hours_SL || "",
+          normalDuty: rec.Normal_Duty_SL || "",
+          breakHours: rec.Break_Hours || "",
+          overTime: rec.Over_Time_SL || "",
+        };
+      }
+
+      function buildSiteWorkerRows(rec, filterEmpCode) {
+        var rows = [];
+        var wts = rec.Work_Timings || [];
+        for (var i = 0; i < wts.length; i++) {
+          var dv = wts[i].display_value || "";
+          if (!dv) continue;
+          var parsed = parseWorkTiming(dv);
+          var empIds = extractEmployeeIDs(parsed.employees);
+          var empNames = extractEmployeeNames(parsed.employees);
+
+          for (var j = 0; j < empIds.length; j++) {
+            /* If filterEmpCode provided, only include matching employee */
+            if (filterEmpCode && empIds[j].trim() !== filterEmpCode.trim())
+              continue;
+            rows.push({
+              employeeName: empNames[j] || parsed.employees,
+              workDate: rec.work_date || "",
+              checkIn: parsed.inTime,
+              checkOut: parsed.outTime,
+              totalHours: parsed.totalHours,
+              normalDuty: parsed.normalDuty,
+              breakHours: parsed.breakHours,
+              overTime: parsed.overTime,
+            });
+          }
+        }
+        return rows;
+      }
+
+      /* ── excel export ── */
+
+      function downloadExcel() {
+        if (!_rows || _rows.length === 0) {
+          alert("No data to export.");
+          return;
+        }
+        var btn = document.getElementById("excelBtn");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Exporting...";
+        }
+        try {
+          var wb = XLSX.utils.book_new();
+          var sheetData = [
+            [
+              "Employee Name",
+              "Work Date",
+              "Check In",
+              "Check Out",
+              "Total Hours",
+              "Normal Duty",
+              "Break Hours",
+              "Over Time",
+            ],
+          ];
+          for (var i = 0; i < _rows.length; i++) {
+            var r = _rows[i];
+            sheetData.push([
+              r.employeeName,
+              r.workDate,
+              r.checkIn,
+              r.checkOut,
+              r.totalHours,
+              r.normalDuty,
+              r.breakHours,
+              r.overTime,
+            ]);
+          }
+          var ws = XLSX.utils.aoa_to_sheet(sheetData);
+          ws["!cols"] = [
+            { wch: 32 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 14 },
+            { wch: 14 },
+            { wch: 14 },
+            { wch: 12 },
+          ];
+          XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
+          var safeTitle = (_reportTitle || "Timesheet_Report").replace(
+            /[^a-z0-9]/gi,
+            "_",
+          );
+          XLSX.writeFile(wb, safeTitle + ".xlsx");
+        } catch (err) {
+          console.error(err);
+          alert("Export failed: " + err);
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Download Excel";
+        }
+      }
+
+      /* ── render ── */
+
+      function renderReport(title, rows) {
+        _rows = rows;
+        _reportTitle = title;
+        var container = document.getElementById("mainContainer");
+        if (rows.length === 0) {
+          container.innerHTML =
+            '<div class="no-records">NO RECORDS FOUND TO DOWNLOAD</div>';
+          return;
+        }
+        container.innerHTML =
+          '<button class="btn-green" id="excelBtn" onclick="downloadExcel()">Download Excel</button>';
+      }
+
+      /* ── main ── */
+
+      ZOHO.CREATOR.init().then(async function () {
+        try {
+          var params = ZOHO.CREATOR.UTIL.getQueryParams();
+          var searchType = params.search_type || "";
+          var employeeId = params.employee_id || "";
+          var dateVar = params.date_var || "";
+          var weekFrom = params.week_from_date || "";
+          var weekTo = params.week_to_date || "";
+          var monthVal = params.month_val || "";
+          var yearVal = params.year_val || "";
+          var siteId = params.site_id || "";
+
+          var title = (searchType || "Timesheet") + " Report";
+
+          /* ── fetch employee info first (same as Deluge) ── */
+          var isDriver = false;
+          var employeeCode = "";
+          var empFullName = "";
+
+          if (employeeId) {
+            var allEmployees = await getAllRecords("Employee_Master_Report");
+            var emp = null;
+            for (var i = 0; i < allEmployees.length; i++) {
+              if (String(allEmployees[i].ID) === String(employeeId)) {
+                emp = allEmployees[i];
+                break;
+              }
+            }
+            if (emp) {
+              var desig = emp.designation
+                ? emp.designation.display_value || ""
+                : "";
+              isDriver = desig === "Driver";
+              employeeCode = emp.Employee_ID || "";
+              empFullName = emp.Employee_Full_Name || "";
+            }
+          }
+
+          var rows = [];
+
+          /* ════════════════════════════════════════════════
+       EMPLOYEE WISE SEARCH  (mirrors Deluge exactly)
+       ════════════════════════════════════════════════ */
+          if (searchType === "Employee Wise Search") {
+            if (isDriver) {
+              /* Driver: query timesheets directly filtered by employee */
+              var driverRecs = await getAllRecords("All_Timesheets");
+              for (var i = 0; i < driverRecs.length; i++) {
+                var rec = driverRecs[i];
+                if (
+                  rec.Timesheet_For === "Drivers" &&
+                  rec.Employee_Name &&
+                  String(rec.Employee_Name.ID) === String(employeeId)
+                ) {
+                  rows.push(buildDriverRow(rec));
+                }
+              }
+            } else {
+              /*
+               * NON-DRIVER  ← THIS IS THE KEY FIX
+               *
+               * Deluge logic:
+               *   1. Fetch Attendance_Form records for this employee  (fet_atten)
+               *   2. For each attendance date → find timesheets on that date
+               *   3. Inside each timesheet's Work_Timings → match employee
+               *
+               * This replicates that exactly using All_Attendance_Report + All_Timesheets
+               */
+              var allAttendance = await getAllRecords("All_Attendance_Report");
+              var allTimesheets = await getAllRecords("All_Timesheets");
+
+              /* Filter attendance rows belonging to this employee */
+              var empAttendance = [];
+              for (var i = 0; i < allAttendance.length; i++) {
+                var aRec = allAttendance[i];
+                /* Match by employee ID or Employee_Name lookup */
+                var aEmpId = "";
+                if (aRec.Employee_Name) {
+                  aEmpId = aRec.Employee_Name.ID
+                    ? String(aRec.Employee_Name.ID)
+                    : "";
+                }
+                if (aEmpId === String(employeeId)) {
+                  empAttendance.push(aRec);
+                }
+              }
+
+              /* For each attendance date, find matching timesheet records */
+              for (var i = 0; i < empAttendance.length; i++) {
+                var aDate =
+                  empAttendance[i].date_1 || empAttendance[i].Date || "";
+                if (!aDate) continue;
+
+                for (var j = 0; j < allTimesheets.length; j++) {
+                  var tsRec = allTimesheets[j];
+                  if (tsRec.work_date !== aDate) continue;
+                  if (tsRec.Timesheet_For !== "Site Workers") continue;
+
+                  var addedRows = buildSiteWorkerRows(tsRec, employeeCode);
+                  rows.push.apply(rows, addedRows);
+                }
+              }
+            }
+
+            /* ════════════════════════════════════════════════
+       DAY WISE SEARCH
+       ════════════════════════════════════════════════ */
+          } else if (searchType === "Day Wise Search") {
+            var allTimesheets = await getAllRecords("All_Timesheets");
+
+            if (employeeId && isDriver) {
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                if (
+                  rec.Timesheet_For === "Drivers" &&
+                  rec.Employee_Name &&
+                  String(rec.Employee_Name.ID) === String(employeeId) &&
+                  rec.work_date === dateVar
+                ) {
+                  rows.push(buildDriverRow(rec));
+                }
+              }
+            } else {
+              /* All employees on that date — same as Deluge "else" branch */
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                if (rec.work_date !== dateVar) continue;
+                if (rec.Timesheet_For === "Drivers") {
+                  if (
+                    !employeeId ||
+                    (rec.Employee_Name &&
+                      String(rec.Employee_Name.ID) === String(employeeId))
+                  ) {
+                    rows.push(buildDriverRow(rec));
+                  }
+                } else if (rec.Timesheet_For === "Site Workers") {
+                  var filterCode = employeeId && !isDriver ? employeeCode : "";
+                  rows.push.apply(rows, buildSiteWorkerRows(rec, filterCode));
+                }
+              }
+            }
+
+            /* ════════════════════════════════════════════════
+       WEEK WISE SEARCH
+       ════════════════════════════════════════════════ */
+          } else if (searchType === "Week Wise Search") {
+            var fromDate = parseDate(weekFrom);
+            var toDate = parseDate(weekTo);
+            var allTimesheets = await getAllRecords("All_Timesheets");
+
+            if (employeeId && isDriver) {
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                if (rec.Timesheet_For !== "Drivers") continue;
+                if (
+                  !rec.Employee_Name ||
+                  String(rec.Employee_Name.ID) !== String(employeeId)
+                )
+                  continue;
+                var d = parseDate(rec.work_date);
+                if (d && fromDate && toDate && d >= fromDate && d <= toDate) {
+                  rows.push(buildDriverRow(rec));
+                }
+              }
+            } else {
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                var d = parseDate(rec.work_date);
+                if (!d || !fromDate || !toDate || d < fromDate || d > toDate)
+                  continue;
+                if (rec.Timesheet_For === "Drivers") {
+                  if (
+                    !employeeId ||
+                    (rec.Employee_Name &&
+                      String(rec.Employee_Name.ID) === String(employeeId))
+                  ) {
+                    rows.push(buildDriverRow(rec));
+                  }
+                } else if (rec.Timesheet_For === "Site Workers") {
+                  var filterCode = employeeId && !isDriver ? employeeCode : "";
+                  rows.push.apply(rows, buildSiteWorkerRows(rec, filterCode));
+                }
+              }
+            }
+
+            /* ════════════════════════════════════════════════
+       SITE WISE SEARCH
+       ════════════════════════════════════════════════ */
+          } else if (searchType === "Site Wise Search") {
+            var allTimesheets = await getAllRecords("All_Timesheets");
+            for (var i = 0; i < allTimesheets.length; i++) {
+              var rec = allTimesheets[i];
+              if (!rec.Site_Name || String(rec.Site_Name.ID) !== String(siteId))
+                continue;
+              if (rec.Timesheet_For === "Drivers") {
+                rows.push(buildDriverRow(rec));
+              } else if (rec.Timesheet_For === "Site Workers") {
+                rows.push.apply(rows, buildSiteWorkerRows(rec, ""));
+              }
+            }
+
+            /* ════════════════════════════════════════════════
+       MONTH WISE SEARCH  (default)
+       ════════════════════════════════════════════════ */
+          } else {
+            var allTimesheets = await getAllRecords("All_Timesheets");
+
+            if (employeeId && isDriver) {
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                if (
+                  rec.Timesheet_For === "Drivers" &&
+                  rec.Employee_Name &&
+                  String(rec.Employee_Name.ID) === String(employeeId) &&
+                  rec.Month_field === monthVal &&
+                  rec.Year_field === yearVal
+                ) {
+                  rows.push(buildDriverRow(rec));
+                }
+              }
+            } else {
+              for (var i = 0; i < allTimesheets.length; i++) {
+                var rec = allTimesheets[i];
+                if (rec.Month_field !== monthVal || rec.Year_field !== yearVal)
+                  continue;
+                if (rec.Timesheet_For === "Drivers") {
+                  if (
+                    !employeeId ||
+                    (rec.Employee_Name &&
+                      String(rec.Employee_Name.ID) === String(employeeId))
+                  ) {
+                    rows.push(buildDriverRow(rec));
+                  }
+                } else if (rec.Timesheet_For === "Site Workers") {
+                  var filterCode = employeeId && !isDriver ? employeeCode : "";
+                  rows.push.apply(rows, buildSiteWorkerRows(rec, filterCode));
+                }
+              }
+            }
+          }
+
+          /* Sort by work date ascending */
+          rows.sort(function (a, b) {
+            var da = parseDate(a.workDate);
+            var db = parseDate(b.workDate);
+            if (!da || !db) return 0;
+            return da - db;
+          });
+
+          renderReport(title, rows);
+        } catch (err) {
+          console.error(err);
+          document.getElementById("mainContainer").innerHTML =
+            '<div class="no-records">Error loading report: ' + err + "</div>";
+        }
+      });
+    </script>
+  </body>
+</html>
