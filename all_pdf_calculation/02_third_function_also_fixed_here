@@ -1,0 +1,179 @@
+
+
+/* ---- 3. RM & EPOXY BOQ ---- */
+
+
+
+function buildRMEpoxyPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    const workTypeMap = new Map();
+
+    items.forEach(item => {
+
+        const workType = (item.Work_Type || "OTHERS").trim();
+
+        if (!workTypeMap.has(workType)) {
+            workTypeMap.set(workType, []);
+        }
+
+        workTypeMap.get(workType).push(item);
+    });
+
+    let grandTotal = 0;
+
+    items.forEach(item => {
+        grandTotal += Number(item.TOTAL_PRICE_QAR || 0);
+    });
+
+    let rows = "";
+
+    workTypeMap.forEach((workItems, workType) => {
+
+        rows += `
+        <tr class="rmSectionRow">
+            <td colspan="6">
+                ${workType}
+            </td>
+        </tr>`;
+
+        const areaMap = new Map();
+
+        workItems.forEach(item => {
+
+            const area = (item.Area_section || "").trim();
+
+            if (!areaMap.has(area)) {
+                areaMap.set(area, []);
+            }
+
+            areaMap.get(area).push(item);
+        });
+
+        let sectionTotal = 0;
+
+        areaMap.forEach((areaItems, area) => {
+
+            if (area) {
+
+                rows += `
+                <tr class="rmAreaRow">
+                    <td></td>
+                    <td colspan="5">
+                        ${area}
+                    </td>
+                </tr>`;
+            }
+
+            areaItems.forEach(row => {
+
+                const total = Number(row.TOTAL_PRICE_QAR || 0);
+
+                sectionTotal += total;
+
+                rows += `
+                <tr>
+                    <td class="center">
+                        ${row.LinkingModule5_Serial_Number || ""}
+                    </td>
+
+                    <td>
+                        ${row.DESCRIPTION || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.UOM || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.QTY || ""}
+                    </td>
+
+                    <td class="right">
+                        ${Number(row.UNIT_PRICE_QAR || 0).toFixed(2)}
+                    </td>
+
+                    <td class="right">
+                        ${total.toFixed(2)}
+                    </td>
+                </tr>`;
+            });
+        });
+
+        rows += `
+        <tr class="subTotalRow">
+            <td colspan="5" class="right">
+                TOTAL
+            </td>
+            <td class="right">
+                ${sectionTotal.toFixed(2)}
+            </td>
+        </tr>`;
+    });
+
+    return {
+
+        title: `RM & EPOXY BOQ - ${record.DRAIEH_CONTRACTING}`,
+
+        filename: "RM & EPOXY BOQ.pdf",
+
+        html: `
+        <table>
+
+            <colgroup>
+                <col style="width:8%">
+                <col style="width:42%">
+                <col style="width:12%">
+                <col style="width:10%">
+                <col style="width:14%">
+                <col style="width:14%">
+            </colgroup>
+
+            <thead>
+
+                <tr>
+                    <td colspan="6" class="titleRow">
+                        RM & EPOXY BOQ - ${record.DRAIEH_CONTRACTING}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="6" class="projectRow">
+                        PROJECT : ${record.PROJECT || ""}
+                    </td>
+                </tr>
+
+                <tr class="headerRow">
+                    <th>SI.NO.</th>
+                    <th>DESCRIPTION</th>
+                    <th>UOM</th>
+                    <th>QTY</th>
+                    <th>UNIT PRICE (QAR)</th>
+                    <th>TOTAL PRICE (QAR)</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                ${rows}
+
+             
+                <tr class="signageNoteRow">
+                    <td colspan="6">
+                        NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>`
+    };
+}
+
+
+
+
+
+
