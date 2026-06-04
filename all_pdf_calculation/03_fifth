@@ -1,0 +1,116 @@
+/* ---- 5. HEAD OF WALL JOINT BOQ ---- */
+function buildHeadOfWallPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let totalOne = 0;
+    let totalDouble = 0;
+
+    items.forEach(item => {
+        totalOne += Number(item.One_Side_Application || 0);
+        totalDouble += Number(item.Double_Side_Application || 0);
+    });
+
+    let rows = "";
+
+    items.forEach(row => {
+
+        rows += `
+        <tr>
+            <td class="center">
+                ${row.LinkingModule5_Serial_Number || ""}
+            </td>
+
+            <td>
+                ${row.Location || ""}
+            </td>
+
+            <td>
+                ${row.Room_Name || ""}
+            </td>
+
+            <td class="center">
+                ${row.Fire_Rating || ""}
+            </td>
+
+            <td class="center">
+                ${Number(row.One_Side_Application || 0).toFixed(2)}
+            </td>
+
+            <td class="center">
+                ${Number(row.Double_Side_Application || 0).toFixed(2)}
+            </td>
+        </tr>`;
+    });
+
+    return {
+
+        title: `HEAD OF WALL JOINT - ${record.DRAIEH_CONTRACTING}`,
+
+        filename: "HEAD OF WALL JOINT BOQ.pdf",
+
+        html: `
+        <table>
+
+            <colgroup>
+                <col style="width:8%">
+                <col style="width:20%">
+                <col style="width:20%">
+                <col style="width:15%">
+                <col style="width:18%">
+                <col style="width:19%">
+            </colgroup>
+
+            <thead>
+
+                <tr>
+                    <td colspan="6" class="titleRow">
+                        HEAD OF WALL JOINT - ${record.DRAIEH_CONTRACTING}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="6" class="projectRow">
+                        PROJECT: ${record.PROJECT || ""}
+                    </td>
+                </tr>
+
+                <tr class="headerRow">
+                    <th>S.NO.</th>
+                    <th>LOCATION</th>
+                    <th>ROOM NAME</th>
+                    <th>FIRE RATING</th>
+                    <th>ONE SIDE APPLICATION (LM)</th>
+                    <th>DOUBLE SIDE APPLICATION (LM)</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                ${rows}
+
+                <tr class="totalRow">
+                    <td colspan="4"
+                        class="right"
+                        style="color:red;font-weight:bold;">
+                        TOTAL :
+                    </td>
+
+                    <td class="center">
+                        ${totalOne.toFixed(2)}
+                    </td>
+
+                    <td class="center">
+                        ${totalDouble.toFixed(2)}
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>`
+    };
+}
+
+
+
