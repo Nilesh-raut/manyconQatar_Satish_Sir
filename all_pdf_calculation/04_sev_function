@@ -1,0 +1,208 @@
+/* ---- 7. FIRE PROOFING BOQ ---- */
+function buildFireProofingPDF(record) {
+
+    const items = record.BOQ_Fire_Proofing || [];
+
+    /* GROUP BY MAIN CATEGORY */
+    const grouped = {};
+
+    items.forEach(item => {
+
+        const cat = item.Main_Category || "OTHERS";
+
+        if (!grouped[cat]) {
+            grouped[cat] = [];
+        }
+
+        grouped[cat].push(item);
+    });
+
+    /* CATEGORY TOTALS */
+    const catTotals = {};
+    let grandTotal = 0;
+
+    items.forEach(item => {
+
+        const cat = item.Main_Category || "OTHERS";
+
+        const sqm = Number(
+            item.TOTAL_SQM ||
+            item.Total_SQM ||
+            0
+        );
+
+        catTotals[cat] = (catTotals[cat] || 0) + sqm;
+        grandTotal += sqm;
+    });
+
+    let rows = "";
+
+    Object.keys(grouped).forEach(cat => {
+
+        rows += `
+        <tr class="sectionRow">
+            <td colspan="9" style="text-align:center;font-weight:bold;">
+                ${cat}
+            </td>
+        </tr>`;
+
+        /* FLOOR GROUPING INSIDE CATEGORY */
+        const floorGroups = {};
+
+        grouped[cat].forEach(item => {
+
+            const floor = item.FLOOR_NAME_STEEL_PROOFING_BOQ || "";
+
+            if (!floorGroups[floor]) {
+                floorGroups[floor] = [];
+            }
+
+            floorGroups[floor].push(item);
+        });
+
+        Object.keys(floorGroups).forEach(floor => {
+
+            const floorRows = floorGroups[floor];
+
+            floorRows.forEach((row, index) => {
+
+                rows += `<tr>`;
+
+                rows += `
+                    <td class="center">
+                        ${row.LinkingModule4_Serial_Number || ""}
+                    </td>`;
+
+                if (index === 0) {
+
+                    rows += `
+                    <td class="center"
+                        rowspan="${floorRows.length}"
+                        style="
+                            vertical-align:middle;
+                            text-align:center;
+                            font-weight:bold;
+                        ">
+                        ${floor}
+                    </td>`;
+                }
+
+                rows += `
+                    <td class="center">
+                        ${row.Size || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.Exposure || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.Length_Height_Per_Structure || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.Nos || ""}
+                    </td>
+
+                    <td class="center">
+                        ${row.Total_Length || ""}
+                    </td>
+
+                    <td class="center">
+                        ${Number(row.SQM_Per_LM || 0).toFixed(2)}
+                    </td>
+
+                    <td class="right">
+                        ${Number(
+                            row.TOTAL_SQM ||
+                            row.Total_SQM ||
+                            0
+                        ).toFixed(2)}
+                    </td>
+                </tr>`;
+            });
+        });
+
+        rows += `
+        <tr class="subTotalRow">
+            <td colspan="8" class="right" style="font-weight:bold;">
+                TOTAL SQM
+            </td>
+            <td class="right" style="font-weight:bold;">
+                ${Number(catTotals[cat] || 0).toFixed(2)}
+            </td>
+        </tr>`;
+    });
+
+    return {
+
+        title: `STEEL PROOFING BOQ - ${record.DRAIEH_CONTRACTING}`,
+
+        filename: "FIRE PROOFING BOQ.pdf",
+
+        html: `
+        <table>
+
+            <colgroup>
+                <col style="width:8%">
+                <col style="width:14%">
+                <col style="width:18%">
+                <col style="width:10%">
+                <col style="width:14%">
+                <col style="width:8%">
+                <col style="width:12%">
+                <col style="width:10%">
+                <col style="width:10%">
+            </colgroup>
+
+            <thead>
+
+                <tr>
+                    <td colspan="9" class="titleRow">
+                        STEEL PROOFING BOQ - ${record.DRAIEH_CONTRACTING}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="9" class="projectRow">
+                        PROJECT: ${record.PROJECT || ""}
+                    </td>
+                </tr>
+
+                <tr class="headerRow">
+                    <th>SI.NO.</th>
+                    <th>FLOOR NAME</th>
+                    <th>SIZE</th>
+                    <th>EXPOSURE</th>
+                    <th>LENGTH / HEIGHT PER STRUCTURE</th>
+                    <th>NOS</th>
+                    <th>TOTAL LENGTH</th>
+                    <th>SQM PER LM</th>
+                    <th>TOTAL SQM</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                ${rows}
+
+            </tbody>
+
+            <tfoot>
+
+                <tr class="totalRow">
+                    <td colspan="8" class="right" style="font-weight:bold;">
+                        GRAND TOTAL
+                    </td>
+
+                    <td class="right" style="font-weight:bold;">
+                        ${Number(grandTotal || 0).toFixed(2)}
+                    </td>
+                </tr>
+
+            </tfoot>
+
+        </table>`
+    };
+}
