@@ -1,0 +1,156 @@
+
+/* ---- 2. ROAD MARKING BOQ ---- */
+
+function buildRoadMarkingPDF(record) {
+
+    const items = record.all_Subform || [];
+
+    let grandTotal = 0;
+
+    let rows = "";
+
+    items.forEach((row, index) => {
+
+        const qty = Number(row.QTY || 0);
+        const width = Number(row.Width || 0);
+
+        // F Column (DON'T TOUCH)
+        const dontTouch = width > 0
+            ? (45 / (100 / (width / 10)))
+            : 0;
+
+        // G Column (SQM / UNIT PRICE)
+        const sqmUnitPrice = dontTouch;
+
+        // H Column (TOTAL PRICE)
+        const totalPrice = qty * sqmUnitPrice;
+
+        grandTotal += totalPrice;
+
+        rows += `
+        <tr>
+            <td style="text-align:center;">
+                ${index + 1}
+            </td>
+
+            <td>
+                ${row.DESCRIPTION || ""}
+            </td>
+
+            <td style="text-align:center;">
+                ${row.UOM || ""}
+            </td>
+
+            <td style="text-align:center;">
+                ${qty.toFixed(2)}
+            </td>
+
+            <td style="text-align:center;">
+                ${width.toFixed(2)}
+            </td>
+
+            <td style="text-align:center;">
+                ${dontTouch.toFixed(2)}
+            </td>
+
+            <td class="right">
+                ${sqmUnitPrice.toFixed(2)}
+            </td>
+
+            <td class="right">
+                ${totalPrice.toFixed(2)}
+            </td>
+        </tr>`;
+    });
+
+    return {
+
+        title: `ROAD MARKING BOQ - ${record.DRAIEH_CONTRACTING || ""}`,
+
+        filename: "ROAD MARKING BOQ.pdf",
+
+        html: `
+        <table>
+
+            <colgroup>
+                <col style="width:6%">
+                <col style="width:34%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+            </colgroup>
+
+            <thead>
+
+                <tr>
+                    <td colspan="8" class="titleRow">
+                        ROAD MARKING BOQ - ${record.DRAIEH_CONTRACTING || ""}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="8" class="projectRow">
+                        PROJECT: ${record.PROJECT || ""}
+                    </td>
+                </tr>
+
+                <tr class="headerRow">
+                    <th style="text-align:center;">SI.NO.</th>
+                    <th>DESCRIPTION</th>
+                    <th style="text-align:center;">UOM</th>
+                    <th style="text-align:center;">QTY</th>
+                    <th style="text-align:center;">WIDTH</th>
+                    <th style="background:red; color:black; text-align:center;">DON'T TOUCH</th>
+                    <th style="text-align:center;">SQM / UNIT PRICE (QAR)</th>
+                    <th style="text-align:center;">TOTAL PRICE (QAR)</th>
+                </tr>
+
+                <tr class="headerRow">
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th style="background:red; color:black; text-align:center;">45.00</th>
+                    <th style="background:#00b050; color:black; text-align:center;">45.00</th>
+                    <th></th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                ${rows}
+
+                <tr class="totalRow">
+
+                    <td colspan="7" class="right">
+                        TOTAL AMOUNT (QAR)
+                    </td>
+
+                    <td class="right">
+                        ${grandTotal.toFixed(2)}
+                    </td>
+
+                </tr>
+
+                <tr class="signageNoteRow">
+                    <td colspan="8">
+                        NOTE : ALL QUANTITIES ARE RE-MEASURABLE AS PER THE SITE CONDITION
+                    </td>
+                </tr>
+
+                <tr class="signageNoteRow">
+                    <td colspan="8">
+                        IF PROPANE - NOTE : HEATING SYSTEM IS PROPANE NOT LPG
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>`
+    };
+}
