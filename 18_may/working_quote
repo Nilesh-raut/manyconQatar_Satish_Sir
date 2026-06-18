@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quote PDF Widget</title>
+  <script src="https://live.zwidgets.com/js-sdk/1.0.5/ZohoEmbededAppSDK.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #eee; padding: 16px; }
+
+    #pdfArea { width: 210mm; margin: 0 auto; background: #fff; }
+
+    .page1{
+        width:210mm;
+        min-height:280mm;   /* A4 height */
+        background:#fff;
+        padding:8mm 10mm 50mm 10mm;
+        position:relative;
+    }
+
+    .ref-bar {
+      text-align: right;
+      font-size: 7.5pt;
+      color: #222;
+      margin-bottom: 5mm;
+    }
+
+    .hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8mm;
+    }
+    .title-en {
+      font-size: 28pt;
+      font-weight: 900;
+      color: #000;
+      line-height: 1;
+      font-family: Arial Black, Arial, sans-serif;
+    }
+    .title-ar {
+      font-size: 17pt;
+      font-weight: 900;
+      color: #000;
+      line-height: 1.2;
+      margin-top: 1px;
+      font-family: Arial, sans-serif;
+    }
+    .logo img { height: 90px; object-fit: contain; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      margin-bottom: 6mm;
+    }
+
+    .lbl-en { font-size: 10pt; font-weight: bold; color: #000; display: block; }
+    .lbl-ar { font-size: 10pt; font-weight: bold; color: #000; display: block; }
+    .val    {
+      line-height: 1.5;
+       font-size: 10pt;
+       color: #000;
+      display: block;
+       margin-top: 6px; }
+
+    .co-col { text-align: right; }
+    .co-name { font-size: 10pt; font-weight: bold; color: #000; line-height: 1.5; }
+    .co-info { font-size: 10pt; color: #000; line-height: 1.7; margin-top: 2px; }
+
+    .total-banner {
+      text-align: right;
+      margin-bottom: 5mm;
+    }
+    .t-label-en  { font-size: 10pt; font-weight: bold; color: #000; line-height: 1.6; }
+    .t-label-ar  { font-size: 10pt; font-weight: bold; color: #000; line-height: 1.5; }
+    .t-amount    { font-size: 13pt; font-weight: 900;  color: #000; line-height: 1.4; }
+
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12mm;
+    }
+    
+    /* MODIFIED: Table header border is now gray and slightly fatty */
+    .tbl thead tr { 
+      background: transparent; 
+      border-bottom: 3.1px solid #d3d3d3;
+    }
+    
+    .tbl th {
+      padding: 8px 6px;
+      font-size: 9pt;
+      font-weight: bold;
+      color: #000;
+      vertical-align: bottom;
+    }
+
+    /* NEW CLASS: Stabilizes height across multi-line headers to prevent text from jumping up and down */
+    .th-wrap {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 28px;
+    }
+
+    /* Adjusted alignments inside the wraps based on the th alignments */
+    .th-wrap.l { align-items: flex-start; text-align: left; }
+    .th-wrap.c { align-items: center; text-align: center; }
+    .th-wrap.r { align-items: flex-end; text-align: right; }
+
+    .tbl th .ar {
+      display: block;
+      font-size: 9pt;
+      font-weight: bold;
+      color: #000;
+      margin-top: 2px;
+    }
+    .tbl td {
+      border-bottom: 0.5px solid #ddd;
+      padding: 10px 6px;
+      font-size: 9.5pt;
+      color: #000;
+      vertical-align: top;
+      line-height: 1.4;
+    }
+    .tbl td.r { text-align: right; }
+    .tbl td.c { text-align: center; }
+    .tbl td.l { text-align: left; }
+    .empty { text-align: center; color: #bbb; font-size: 9pt; padding: 20px 0; }
+
+    .summary { margin-bottom: 7mm; }
+
+    .s-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: baseline;
+      margin-bottom: 12px;
+    }
+    .s-lbl {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #000;
+      text-align: right;
+      margin-right: 22px;
+    }
+    .s-rq {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #000;
+      width: 35px;
+      text-align: center;
+      margin-right: 16px;
+    }
+    .s-amt {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #000;
+      width: 110px;
+      text-align: right;
+    }
+
+    .notes-ttl {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #000;
+      margin-bottom: 3mm;
+    }
+    .notes-ttl .ar { font-size: 10pt; font-weight: bold; color: #000; }
+    .notes-body {
+      font-size: 8.5pt;
+      color: #000;
+      line-height: 1.85;
+      white-space: pre-line;
+    }
+
+    .seal {
+      position: absolute;
+      bottom: 20mm;
+      right: 10mm;
+      width: 253px;
+      height: 114px;
+      padding: 3px;
+    }
+    .seal img { width: 100%; display: block; }
+
+    .foot {
+        position: absolute;
+        bottom: 2mm;
+        left: 10mm;
+        right: 10mm;
+        text-align: center;
+        font-size: 7pt;
+        color: #777;
+        border-top: 0.5px solid #ccc;
+        padding-top: 2mm;
+    }
+    .page2 {
+      width: 210mm;
+      background: #fff;
+      page-break-before: always;
+      break-before: page;
+    }
+    .page2 img { width: 210mm; display: block; }
+
+    .tbl tr{
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .tbl td{
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .tbl tbody tr{
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+
+.tbl th{
+    vertical-align:top;
+}
+
+.tbl th .en{
+    display:block;
+    height:14px;
+    margin-bottom:4px;
+}
+.title-ar{
+    font-size:18pt;
+    font-weight:900;
+    transform:scaleX(1.7);
+    transform-origin:left;
+    display:inline-block;
+}
+
+  </style>
+</head>
+<body>
+
+<div id="pdfArea">
+
+  <div class="page1">
+
+    <div class="ref-bar" id="f-header">   </div>
+
+    <div class="hdr">
+      <div>
+        <div class="title-en">Quote</div>
+        <div class="title-ar">عرض سعر</div>
+      </div>
+      <div class="logo">
+        <img src="https://res.cloudinary.com/dgndmxjvc/image/upload/v1781659217/logo_qatar_d5mbqw.jpg"
+             alt="Logo" crossorigin="anonymous">
+      </div>
+    </div>
+
+    <div class="meta">
+      <div>
+        <span class="lbl-en">Customer</span>
+        <span class="lbl-ar">العميل</span>
+        <span class="val" id="f-customer">—</span>
+      </div>
+
+      <div>
+        <span class="lbl-en">Number</span>
+        <span class="lbl-ar">رقم</span>
+        <span class="val" id="f-number">—</span>
+        <br>
+        <span class="lbl-en">Date</span>
+        <span class="lbl-ar">التاريخ</span>
+        <span class="val" id="f-date">—</span>
+      </div>
+
+      <div class="co-col">
+        <div class="co-name">MANYCON TRADING AND CONTRACTING W.L.L</div>
+        <div class="co-info">
+          DOHA, 45754, Qatar<br>
+          admin@manyconqatar.com<br>
+          +97477333551<br>
+          CR Number 119691
+        </div>
+      </div>
+    </div>
+
+    <div class="total-banner">
+      <div class="t-label-en">Total</div>
+      <div class="t-label-ar">المجموع شامل القيمة المضافة</div>
+      <div class="t-amount" id="f-grandtotal">8,826.00 ر.ق.</div>
+    </div>
+
+    <table class="tbl">
+      <thead>
+
+<tr>
+    <th style="width:5%; text-align:center;">
+        <div class="th-wrap c">
+            #
+            <span class="ar">&nbsp;</span>
+        </div>
+    </th>
+
+    <th style="width:45%; text-align:left;">
+        <div class="th-wrap l">
+            Description
+            <span class="ar">الوصف</span>
+        </div>
+    </th>
+
+    <th style="width:8%; text-align:center;">
+        <div class="th-wrap c">
+            Qty
+            <span class="ar">الكمية</span>
+        </div>
+    </th>
+
+    <th style="width:12%; text-align:right;">
+        <div class="th-wrap r">
+            Price
+            <span class="ar">السعر</span>
+        </div>
+    </th>
+
+    <th style="width:14%; text-align:right;">
+        <div class="th-wrap r">
+            Amount
+            <span class="ar">المبلغ الخاضع للضريبة</span>
+        </div>
+    </th>
+
+    <th style="width:12%; text-align:right;">
+        <div class="th-wrap r">
+            Tax
+            <span class="ar">القيمة المضافة</span>
+        </div>
+    </th>
+
+    <th style="width:14%; text-align:right;">
+        <div class="th-wrap r">
+            Total
+            <span class="ar">المجموع</span>
+        </div>
+    </th>
+</tr>
+
+      </thead>
+      <tbody id="f-items">
+        <tr><td colspan="7" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+
+    <div class="summary">
+      <div class="s-row">
+        <div class="s-lbl">Subtotal المجموع الفرعي </div>
+        <div class="s-rq">ر.ق.</div>
+        <div class="s-amt" id="f-subtotal">0.00</div>
+      </div>
+
+      <div class="s-row">
+        <div class="s-lbl">Total VAT إجمالي ضريبة القيمة المضافة  </div>
+        <div class="s-rq">ر.ق.</div>
+        <div class="s-amt" id="f-vat">0.00</div>
+      </div>
+
+      <div class="s-row">
+        <div class="s-lbl">Total المجموع شامل القيمة المضافة </div>
+        <div class="s-rq">ر.ق.</div>
+        <div class="s-amt" id="f-total">0.00</div>
+      </div>
+    </div>
+
+    <div class="notes-ttl">Notes <span class="ar">ملاحظات</span></div>
+    <div class="notes-body" id="f-notes">—</div>
+
+    <div class="seal">
+      <img src="https://res.cloudinary.com/dgndmxjvc/image/upload/v1780734239/Screenshot_2026-06-06_135316_h7fabu.png">
+    </div>
+
+    <div class="foot">MANYCON TRADING AND CONTRACTING W.L.L</div>
+
+  </div></div><script>
+const $    = id => document.getElementById(id);
+const fmtN = n  => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function fill(rec, contactRec) {
+
+
+  // $("f-customer").innerHTML = (rec.Account_Name?.name || rec.Contact_Name?.name || "—") + 
+  //   (rec.Billing_Street ? `<br><span style="font-weight:normal; font-size:9.5pt; color:#222;">${rec.Billing_Street}, ${rec.Billing_City || ''} ${rec.Billing_Country || ''}</span>` : '');
+
+
+  let customerHtml = rec.Account_Name?.name || rec.Contact_Name?.name || "—";
+
+if(contactRec)
+{
+    customerHtml += "<br>";
+
+    if(contactRec.Full_Name)
+        customerHtml += "ATTN: " + contactRec.Full_Name + "<br>";
+
+    if(contactRec.Address)
+        customerHtml += contactRec.Address + "<br>";
+
+    if(contactRec.Email)
+        customerHtml += contactRec.Email + "<br>";
+
+    if(contactRec.Phone)
+        customerHtml += contactRec.Phone;
+}
+
+$("f-customer").innerHTML = customerHtml;
+
+
+
+
+  $("f-header").textContent = rec.Header || " ";
+  
+const quoteNo = String(rec.Quote_Number || rec.id || "—");
+
+$("f-number").textContent = quoteNo.length > 4 ? quoteNo.slice(-4) : quoteNo;
+
+
+  $("f-date").textContent      = rec.Valid_Till   || "—";
+
+  const sub   = Number(rec.Sub_Total   || 0);
+  const tax   = Number(rec.Tax          || 0);
+  const grand = Number(rec.Grand_Total || 0);
+
+  $("f-subtotal").textContent   = fmtN(sub);
+  $("f-vat").textContent        = fmtN(tax);
+  $("f-total").textContent      = fmtN(grand);
+  $("f-grandtotal").textContent = fmtN(grand) + " ر.ق.";
+
+  const lines = rec.Product_Details || [];
+  if (!lines.length) {
+    $("f-items").innerHTML = `<tr><td colspan="7" class="empty">No line items</td></tr>`;
+  } else {
+    $("f-items").innerHTML = lines.map((li, index) => {
+      const name   = li.product?.name || "—";
+      const qty    = Number(li.quantity           || 0);
+      const price  = Number(li.list_price           || 0);
+      const amount = Number(li.total_after_discount || li.net_total || 0);
+      const liTax  = Number(li.Tax                  || 0);
+      const ttl    = Number(li.total                || 0);
+      
+      return `<tr>
+        <td class="c">${index + 1}</td>
+        <td class="l">
+          <div style="font-weight: bold; text-transform: uppercase;">${name}</div>
+          ${
+            li.product_description
+            ? `<div style="margin-top:4px;font-size:8.5pt;color:#111;text-transform: uppercase;">
+                 ${li.product_description}
+               </div>`
+            : ""
+          }
+        </td>
+        <td class="c">${qty}</td>
+        <td class="r">${fmtN(price)}</td>
+        <td class="r">${fmtN(amount)}</td>
+        <td class="r">${fmtN(liTax)}</td>
+        <td class="r">${fmtN(ttl)}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  const lines2 = [];
+ lines2.push(
+    "PROJECT NAME: " +
+    (rec.Deal_Name?.name
+        ? rec.Deal_Name.name.toUpperCase()
+        : " ")
+);
+
+lines2.push(
+    "PAYMENT TERMS: " +
+    (rec.Terms_and_Conditions
+        ? rec.Terms_and_Conditions.toUpperCase()
+        : " ")
+);
+  lines2.push("");
+  lines2.push("NOTE: PLEASE FIND THE ATTAEL CHED TERMS AND CONDITIONS IN THE BELOW ANNEXURE");
+  lines2.push("ALL QUANTITIES ARE RE-MEASURABLE AS PER SITE CONDITION");
+  lines2.push("");
+  lines2.push("WE HOPE THE QUOTATION IS IN LINE WITH YOUR REQUIREMENT AND LOOKING FORWARD TO RECEIVE YOUR VALUABLE ORDER");
+  $("f-notes").textContent = lines2.join("\n");
+
+  const pdfArea = document.getElementById("pdfArea");
+  const existingPage2 = document.querySelector(".page2");
+  if (existingPage2) existingPage2.parentNode.removeChild(existingPage2);
+
+  if (rec.sub_category && rec.sub_category.trim().toLowerCase() === "road mapping") {
+    const page2 = document.createElement("div");
+    page2.className = "page2";
+    const img = document.createElement("img");
+    img.src = "https://res.cloudinary.com/dgndmxjvc/image/upload/v1781659437/QT_Test_1__page-0002_bs2rwi.jpg";
+    img.alt = "Terms";
+    img.crossOrigin = "anonymous";
+    page2.appendChild(img);
+    pdfArea.appendChild(page2);
+  }
+}
+
+/* Zoho initialization */
+ZOHO.embeddedApp.on("PageLoad", async function(data) {
+  try {
+    ZOHO.CRM.UI.Resize({ height: "800", width: "860" });
+    const recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
+    const res = await ZOHO.CRM.API.getRecord({ Entity: "Quotes", RecordID: recordId });
+    let contactRec = null;
+    const rec = res.data[0];
+// console.log("Nil 1 --------------------------------------");
+
+//      console.log("QUOTE RECORD:", JSON.stringify(rec, null, 2));
+
+// console.log("Nil 2 --------------------------------------");
+
+if(rec.Contact_Name && rec.Contact_Name.id)
+{
+    const contactRes = await ZOHO.CRM.API.getRecord({
+        Entity: "Contacts",
+        RecordID: rec.Contact_Name.id
+    });
+
+    contactRec = contactRes.data[0];
+
+    // console.log(
+    //     "CONTACT RECORD:",
+    //     JSON.stringify(contactRec, null, 2)
+    // );
+}
+
+
+    fill(rec, contactRec);
+  } catch (err) {
+    console.error("Widget error:", err);
+  }
+});
+ZOHO.embeddedApp.init();
+</script>
+</body>
+</html>
